@@ -1,4 +1,12 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000/api').replace(/\/$/, '');
+const isLocalHost =
+  typeof window === 'undefined' ||
+  ['localhost', '127.0.0.1', ''].includes(window.location.hostname);
+
+const DEFAULT_API_BASE_URL = isLocalHost
+  ? 'http://127.0.0.1:4000/api'
+  : 'https://writehabit-api.onrender.com/api';
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(message, status) {
