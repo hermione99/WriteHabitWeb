@@ -4,8 +4,10 @@ import { prisma } from './lib/prisma.js';
 
 const app = createApp();
 
-const server = app.listen(env.port, '127.0.0.1', () => {
-  console.log(`WriteHabit API listening on http://127.0.0.1:${env.port}`);
+const host = process.env.HOST || '0.0.0.0';
+
+const server = app.listen(env.port, host, () => {
+  console.log(`WriteHabit API listening on ${host}:${env.port}`);
 });
 
 const shutdown = async () => {
