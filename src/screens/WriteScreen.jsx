@@ -331,8 +331,8 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       if (draftMenuOpen) setDraftMenuOpen(false);
     }}>
       <TopBar active="write" onNav={onNav} dark={dark} onToggleDark={onToggleDark} right={
-        <div style={{display:'flex', alignItems:'center', gap:12}}>
-          <span className="meta" style={{fontSize:11}}>{isEditing ? '편집 모드' : formatSavedLabel()}</span>
+        <div className="write-actions" style={{display:'flex', alignItems:'center', gap:12}}>
+          <span className="meta write-saved-label" style={{fontSize:11}}>{isEditing ? '편집 모드' : formatSavedLabel()}</span>
           <button className="btn sm ghost" onClick={() => {
             const body = editorRef.current?.innerText?.trim() || '';
             const dirty = isEditing

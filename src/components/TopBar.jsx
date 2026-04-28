@@ -84,6 +84,7 @@ export const TopBar = ({
               </button>
               {notifOpen && (
                 <div
+                  className="notif-dropdown"
                   style={{
                     position: 'absolute',
                     right: 0,
@@ -259,6 +260,7 @@ export const TopBar = ({
                 onClick={() => setMenuOpen((o) => !o)} />
               {menuOpen && (
                 <div
+                  className="user-menu-dropdown"
                   style={{
                     position: 'absolute',
                     right: 0,

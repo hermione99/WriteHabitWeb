@@ -399,14 +399,14 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
         {/* Streak — own profile only */}
         {isOwnProfile && (
           <section style={{padding:'28px 0', borderBottom:'1px solid var(--rule-soft)'}}>
-            <div style={{display:'flex', justifyContent:'space-between', marginBottom:16, alignItems:'baseline'}}>
+            <div className="profile-streak-head" style={{display:'flex', justifyContent:'space-between', marginBottom:16, alignItems:'baseline'}}>
               <div>
                 <div className="eyebrow">연속 작성 · WRITING STREAK</div>
                 <div style={{fontFamily:'var(--f-kr-serif)', fontSize:22, fontWeight:700, marginTop:4, color:'var(--ink)'}}>
                   47일 연속 기록 중 <span style={{color:'var(--accent)', fontFamily:'var(--f-latin)', fontSize:18, marginLeft:8}}>● 오늘 완료</span>
                 </div>
               </div>
-              <div style={{display:'flex', gap:10}}>
+              <div className="profile-streak-chips" style={{display:'flex', gap:10}}>
                 {['30일','90일','1년'].map(p => (
                   <button key={p} className={`chip${streakPeriod===p?' active':''}`} onClick={() => setStreakPeriod(p)}>{p}</button>
                 ))}

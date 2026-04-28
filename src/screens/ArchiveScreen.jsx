@@ -63,7 +63,7 @@ export const ArchiveScreen = ({onNav, keywords = []}) => {
         <section style={{display:'grid', gridTemplateColumns:'1fr auto', gap:40, alignItems:'end', paddingBottom:24, borderBottom:'1px solid var(--rule)'}}>
           <div>
             <div className="eyebrow" style={{marginBottom:10}}>ARCHIVE · {keywordDays} DAYS · 428,932 WRITINGS</div>
-            <h1 style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:56, letterSpacing:'-0.025em', lineHeight:1, margin:0, color:'var(--ink)'}}>키워드 아카이브</h1>
+            <h1 className="hero-title-xl" style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:56, letterSpacing:'-0.025em', lineHeight:1, margin:0, color:'var(--ink)'}}>키워드 아카이브</h1>
             <p style={{fontSize:14, color:'var(--ink-mute)', marginTop:14, maxWidth:'48ch', lineHeight:1.65}}>2026년 4월 1일부터 매일 하나씩, {keywordDays}개의 키워드가 쌓였습니다. 한 글자, 한 단어, 하나의 감정에 대한 기록.</p>
           </div>
           <div style={{display:'flex', gap:8}} onClick={e => e.stopPropagation()}>

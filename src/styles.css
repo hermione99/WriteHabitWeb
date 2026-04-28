@@ -606,4 +606,44 @@ body {
 
   /* Footer */
   footer { padding: 18px 14px !important; flex-direction: column !important; gap: 14px !important; align-items: flex-start !important; }
+
+  /* Feed filter row: stack chips above search */
+  .feed-filters-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .feed-filters-search {
+    justify-content: space-between !important;
+    gap: 10px !important;
+  }
+  .feed-filters-search > div:first-child,
+  .feed-filters-search input { flex: 1 1 auto; }
+  .feed-filters-search input { width: 100% !important; }
+
+  /* Profile streak header: chips below heading */
+  .profile-streak-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .profile-streak-chips { align-self: stretch; }
+
+  /* Write screen actions: hide auto-save label, tighter gap */
+  .write-actions { gap: 8px !important; }
+  .write-saved-label { display: none !important; }
+
+  /* Oversized hero titles shrink on mobile */
+  .hero-title-xl { font-size: 38px !important; }
+
+  /* Notification + user menu dropdowns: pin to viewport so they don't overflow */
+  .notif-dropdown,
+  .user-menu-dropdown {
+    position: fixed !important;
+    top: 100px !important;
+    right: 12px !important;
+    left: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
 }
