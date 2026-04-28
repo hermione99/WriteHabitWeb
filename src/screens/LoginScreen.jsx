@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Logo } from '../components/Logo.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { checkHandleAvailability, login, register } from '../lib/api.js';
+import { API_ORIGIN, checkHandleAvailability, login, register } from '../lib/api.js';
 import { checkHandleAvailable as checkLocalHandleAvailable, sanitizeHandle } from '../lib/handles.js';
 
 const DEMO_EMAIL    = 'minji@writehabit.kr';
@@ -307,7 +307,7 @@ export const LoginScreen = ({onLogin, todayKw, knownHandles = []}) => {
 
               {mode==='login' && (
                 <p style={{marginTop:12, fontSize:11.5, color:'var(--ink-faint)', textAlign:'center', fontFamily:'var(--f-mono)'}}>
-                  API 서버: http://127.0.0.1:4000
+                  API 서버: {API_ORIGIN}
                 </p>
               )}
             </form>
