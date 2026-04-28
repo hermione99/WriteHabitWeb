@@ -58,6 +58,13 @@ cd server
 DATABASE_URL="postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require" npm run prisma:deploy
 ```
 
+Seed the production keyword schedule without demo users or posts:
+
+```bash
+cd server
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require" npm run seed:keywords
+```
+
 Confirm:
 
 ```bash

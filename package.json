@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "predeploy": "node scripts/predeploy.mjs",
     "db:deploy": "npm --prefix server run prisma:deploy",
+    "seed:keywords": "npm --prefix server run seed:keywords",
     "db:seed": "npm --prefix server run db:seed",
     "prisma:generate": "npm --prefix server run prisma:generate"
   },
