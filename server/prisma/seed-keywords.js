@@ -1,10 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { KEYWORD_POOL } from '../../src/data/writehabitData.js';
+import { addUtcDays, startOfKstTodayAsUtcDate } from '../src/lib/kstDate.js';
 
 const prisma = new PrismaClient();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const LAUNCH_DATE = new Date(2026, 3, 1);
+const LAUNCH_DATE = new Date(Date.UTC(2026, 3, 1));
 const DAYS_TO_SEED = 120;
 
 const mulberry32 = (seed) => {
@@ -27,15 +28,9 @@ const shuffleSeeded = (items, seed) => {
   return shuffled;
 };
 
-const startOfDay = (date) => {
-  const value = new Date(date);
-  value.setHours(0, 0, 0, 0);
-  return value;
-};
-
 const dayOfYear = (date) => {
-  const start = Date.UTC(date.getFullYear(), 0, 1);
-  const current = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const start = Date.UTC(date.getUTCFullYear(), 0, 1);
+  const current = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   return Math.floor((current - start) / DAY_MS);
 };
 
@@ -87,12 +82,12 @@ const upsertKeywordSchedule = async ({ startsAt, word, eng, status }) => {
 };
 
 const main = async () => {
-  const today = startOfDay(new Date());
+  const today = startOfKstTodayAsUtcDate();
   let createdOrUpdated = 0;
 
   for (let offset = 0; offset < DAYS_TO_SEED; offset += 1) {
-    const startsAt = startOfDay(new Date(LAUNCH_DATE.getTime() + DAY_MS * offset));
-    const shuffled = shuffleSeeded(KEYWORD_POOL, startsAt.getFullYear() * 31 + 7);
+    const startsAt = addUtcDays(LAUNCH_DATE, offset);
+    const shuffled = shuffleSeeded(KEYWORD_POOL, startsAt.getUTCFullYear() * 31 + 7);
     const keyword = shuffled[dayOfYear(startsAt) % shuffled.length];
 
     await upsertKeywordSchedule({

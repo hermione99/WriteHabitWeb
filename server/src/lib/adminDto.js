@@ -1,10 +1,11 @@
-const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
+import { DAY_LABELS, getUtcDateParts, startOfKstTodayAsUtcDate } from './kstDate.js';
 
 const formatDate = (date) => {
   if (!date) return '';
   const value = new Date(date);
   if (Number.isNaN(value.getTime())) return '';
-  return `${String(value.getMonth() + 1).padStart(2, '0')}·${String(value.getDate()).padStart(2, '0')}`;
+  const parts = getUtcDateParts(value);
+  return `${String(parts.month + 1).padStart(2, '0')}·${String(parts.day).padStart(2, '0')}`;
 };
 
 const mapStatus = (status, startsAt) => {
@@ -12,12 +13,12 @@ const mapStatus = (status, startsAt) => {
   if (status === 'DRAFT') return 'draft';
   if (status === 'ARCHIVED') return 'archived';
 
-  const today = new Date();
+  const today = startOfKstTodayAsUtcDate();
   const date = new Date(startsAt);
   if (
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate()
+    date.getUTCFullYear() === today.getUTCFullYear() &&
+    date.getUTCMonth() === today.getUTCMonth() &&
+    date.getUTCDate() === today.getUTCDate()
   ) {
     return 'live';
   }
@@ -26,11 +27,12 @@ const mapStatus = (status, startsAt) => {
 
 export const toScheduleRow = (schedule) => {
   const startsAt = new Date(schedule.startsAt);
+  const parts = getUtcDateParts(startsAt);
   return {
     id: schedule.id,
     keywordId: schedule.keywordId,
     date: formatDate(schedule.startsAt),
-    day: DAY_LABELS[startsAt.getDay()],
+    day: DAY_LABELS[parts.weekday],
     word: schedule.keyword?.text || '',
     eng: schedule.keyword?.eng || '',
     prompt: schedule.keyword?.prompt || '',

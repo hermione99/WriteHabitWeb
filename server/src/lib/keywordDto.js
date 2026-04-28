@@ -1,20 +1,26 @@
-const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
-const LAUNCH_DATE = new Date(2026, 3, 1);
+import { DAY_LABELS, getUtcDateParts } from './kstDate.js';
+
+const LAUNCH_DATE = new Date(Date.UTC(2026, 3, 1));
 
 const pad2 = (value) => String(value).padStart(2, '0');
 
-const formatDateStr = (date) =>
-  `${date.getFullYear()}·${pad2(date.getMonth() + 1)}·${pad2(date.getDate())}`;
+const formatDateStr = (date) => {
+  const parts = getUtcDateParts(date);
+  return `${parts.year}·${pad2(parts.month + 1)}·${pad2(parts.day)}`;
+};
 
-const formatShortDate = (date) => `${pad2(date.getMonth() + 1)}·${pad2(date.getDate())}`;
+const formatShortDate = (date) => {
+  const parts = getUtcDateParts(date);
+  return `${pad2(parts.month + 1)}·${pad2(parts.day)}`;
+};
 
 const formatKeywordNo = (date) => {
   const launchUTC = Date.UTC(
-    LAUNCH_DATE.getFullYear(),
-    LAUNCH_DATE.getMonth(),
-    LAUNCH_DATE.getDate()
+    LAUNCH_DATE.getUTCFullYear(),
+    LAUNCH_DATE.getUTCMonth(),
+    LAUNCH_DATE.getUTCDate()
   );
-  const dateUTC = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
+  const dateUTC = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
   const dayNum = Math.floor((dateUTC - launchUTC) / 86400000) + 1;
   return String(Math.max(1, dayNum)).padStart(4, '0');
 };
@@ -32,7 +38,7 @@ export const toTodayKeyword = (schedule) => {
       `오늘의 키워드는 '${word}'입니다. 이 단어가 당신에게 불러오는 한 장면, 한 감정, 한 기억을 짧게 적어 보세요.`,
     no: formatKeywordNo(date),
     dateStr: formatDateStr(date),
-    weekday: DAY_LABELS[date.getDay()],
+    weekday: DAY_LABELS[getUtcDateParts(date).weekday],
     startsAt: schedule.startsAt,
     status: schedule.status,
   };
