@@ -1,0 +1,196 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum KeywordStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  ARCHIVED
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+model User {
+  id             String         @id @default(cuid())
+  email          String         @unique
+  handle         String         @unique
+  displayName    String
+  bio            String?
+  passwordHash   String
+  role           UserRole       @default(USER)
+  avatarUrl      String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  posts          Post[]
+  comments       Comment[]
+  likes          Like[]
+  bookmarks      Bookmark[]
+  reports        Report[]       @relation("Reporter")
+  notifications  Notification[]
+  following      Follow[]       @relation("Follower")
+  followers      Follow[]       @relation("Following")
+  blocking       Block[]        @relation("Blocker")
+  blockedBy      Block[]        @relation("Blocked")
+}
+
+model Post {
+  id          String      @id @default(cuid())
+  authorId    String
+  keywordId   String?
+  title       String
+  body        String
+  status      PostStatus  @default(PUBLISHED)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  keyword     Keyword?    @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+  comments    Comment[]
+  likes       Like[]
+  bookmarks   Bookmark[]
+  reports     Report[]
+
+  @@index([authorId, createdAt])
+  @@index([keywordId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model Like {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime  @default(now())
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model Bookmark {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime  @default(now())
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+}
+
+model Follow {
+  id          String    @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime  @default(now())
+  follower    User      @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User      @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+}
+
+model Block {
+  id        String    @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime  @default(now())
+  blocker   User      @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User      @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model Keyword {
+  id          String            @id @default(cuid())
+  text        String
+  eng         String?
+  prompt      String?
+  status      KeywordStatus     @default(DRAFT)
+  publishDate DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  posts       Post[]
+  schedules   KeywordSchedule[]
+
+  @@unique([text, publishDate])
+  @@index([status, publishDate])
+}
+
+model KeywordSchedule {
+  id        String        @id @default(cuid())
+  keywordId String
+  startsAt  DateTime
+  endsAt    DateTime?
+  status    KeywordStatus @default(SCHEDULED)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  keyword   Keyword       @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@unique([startsAt])
+  @@index([startsAt, status])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  postId      String
+  reporterId  String
+  reason      String
+  detail      String?
+  status      ReportStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  post        Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter    User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}

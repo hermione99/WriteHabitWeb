@@ -1,0 +1,356 @@
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:4000/api').replace(/\/$/, '');
+
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+const request = async (path, options = {}) => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new ApiError(data.error || '요청을 처리하지 못했습니다.', response.status);
+  }
+
+  return data;
+};
+
+export const API_ORIGIN = API_BASE_URL.replace(/\/api$/, '');
+
+export const resolveAssetUrl = (url) => {
+  if (!url) return '';
+  if (/^https?:\/\//i.test(url) || url.startsWith('data:')) return url;
+  if (url.startsWith('/')) return `${API_ORIGIN}${url}`;
+  return url;
+};
+
+export const uploadAvatar = async ({ file, token }) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_BASE_URL}/uploads/avatar`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new ApiError(data.error || '이미지 업로드에 실패했습니다.', response.status);
+  }
+  return data;
+};
+
+export const register = ({ email, password, handle, displayName }) =>
+  request('/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password, handle, displayName }),
+  });
+
+export const login = ({ email, password }) =>
+  request('/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+
+export const getMe = (token) =>
+  request('/auth/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const checkHandleAvailability = (handle) =>
+  request(`/auth/handles/${encodeURIComponent(handle)}`);
+
+export const listPosts = (token, { keywordId, keyword, q } = {}) => {
+  const params = new URLSearchParams();
+  if (keywordId) params.set('keywordId', keywordId);
+  if (!keywordId && keyword) params.set('keyword', keyword);
+  if (q) params.set('q', q);
+  const qs = params.toString();
+  return request(`/posts${qs ? `?${qs}` : ''}`, {
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {},
+  });
+};
+
+export const createPost = ({ title, body, keywordId, token }) =>
+  request('/posts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title, body, keywordId }),
+  });
+
+export const updatePost = ({ id, title, body, keywordId, token }) =>
+  request(`/posts/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title, body, keywordId }),
+  });
+
+export const deletePost = ({ id, token }) =>
+  request(`/posts/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const listDrafts = (token) =>
+  request('/posts/drafts', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const createDraft = ({ title, body, keywordId, token }) =>
+  request('/posts/drafts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title, body, keywordId }),
+  });
+
+export const updateDraft = ({ id, title, body, keywordId, token }) =>
+  request(`/posts/drafts/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title, body, keywordId }),
+  });
+
+export const publishDraft = ({ id, title, body, keywordId, token }) =>
+  request(`/posts/drafts/${id}/publish`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ title, body, keywordId }),
+  });
+
+export const deleteDraft = ({ id, token }) =>
+  request(`/posts/drafts/${id}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const likePost = ({ id, token }) =>
+  request(`/posts/${id}/like`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const unlikePost = ({ id, token }) =>
+  request(`/posts/${id}/like`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const bookmarkPost = ({ id, token }) =>
+  request(`/posts/${id}/bookmark`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const unbookmarkPost = ({ id, token }) =>
+  request(`/posts/${id}/bookmark`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const listComments = ({ postId, token }) =>
+  request(`/posts/${postId}/comments`, {
+    headers: token
+      ? {
+          Authorization: `Bearer ${token}`,
+        }
+      : {},
+  });
+
+export const createComment = ({ postId, body, token }) =>
+  request(`/posts/${postId}/comments`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ body }),
+  });
+
+export const deleteComment = ({ postId, commentId, token }) =>
+  request(`/posts/${postId}/comments/${commentId}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const getMyProfile = (token) =>
+  request('/users/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const updateMyProfile = ({ displayName, handle, bio, avatarUrl, token }) =>
+  request('/users/me', {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ displayName, handle, bio, avatarUrl }),
+  });
+
+export const getPublicProfile = (handle) => request(`/users/${encodeURIComponent(handle)}`);
+
+export const getTodayKeyword = () => request('/keywords/today');
+
+export const listKeywordArchive = () => request('/keywords/archive');
+
+export const listUpcomingKeywords = () => request('/keywords/upcoming');
+
+export const getMySocialState = (token) =>
+  request('/social/me', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const followUser = ({ handle, token }) =>
+  request(`/users/${encodeURIComponent(handle)}/follow`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const unfollowUser = ({ handle, token }) =>
+  request(`/users/${encodeURIComponent(handle)}/follow`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const blockUser = ({ handle, token }) =>
+  request(`/users/${encodeURIComponent(handle)}/block`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const unblockUser = ({ handle, token }) =>
+  request(`/users/${encodeURIComponent(handle)}/block`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const createReport = ({ targetType, targetId, reason, detail, token }) =>
+  request('/reports', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ targetType, targetId, reason, detail }),
+  });
+
+export const listNotifications = (token) =>
+  request('/notifications', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const markNotificationRead = ({ id, token }) =>
+  request(`/notifications/${id}/read`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const markAllNotificationsRead = (token) =>
+  request('/notifications/read-all', {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const listAdminKeywordSchedule = (token) =>
+  request('/admin/keywords/schedule', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const listAdminKeywordRecommendations = ({ count = 7, token }) =>
+  request(`/admin/keywords/recommendations?count=${encodeURIComponent(count)}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const createAdminKeywordSchedule = ({ date, word, eng, prompt, status, token }) =>
+  request('/admin/keywords/schedule', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ date, word, eng, prompt, status }),
+  });
+
+export const updateAdminKeywordSchedule = ({ id, date, word, eng, prompt, status, token }) =>
+  request(`/admin/keywords/schedule/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ date, word, eng, prompt, status }),
+  });
+
+export const listAdminReports = (token) =>
+  request('/admin/reports', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const updateAdminReport = ({ id, status, token }) =>
+  request(`/admin/reports/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
+  });
