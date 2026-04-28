@@ -1,4 +1,4 @@
-import { DAY_LABELS, getUtcDateParts } from './kstDate.js';
+import { DAY_LABELS, getUtcDateParts, startOfKstTodayAsUtcDate } from './kstDate.js';
 
 const LAUNCH_DATE = new Date(Date.UTC(2026, 3, 1));
 
@@ -25,6 +25,20 @@ const formatKeywordNo = (date) => {
   return String(Math.max(1, dayNum)).padStart(4, '0');
 };
 
+const effectiveKeywordStatus = (schedule) => {
+  const today = startOfKstTodayAsUtcDate();
+  const startsAt = new Date(schedule.startsAt);
+  if (
+    startsAt.getUTCFullYear() === today.getUTCFullYear() &&
+    startsAt.getUTCMonth() === today.getUTCMonth() &&
+    startsAt.getUTCDate() === today.getUTCDate() &&
+    ['ACTIVE', 'SCHEDULED'].includes(schedule.status)
+  ) {
+    return 'ACTIVE';
+  }
+  return schedule.status;
+};
+
 export const toTodayKeyword = (schedule) => {
   const date = new Date(schedule.startsAt);
   const word = schedule.keyword?.text || '';
@@ -40,7 +54,7 @@ export const toTodayKeyword = (schedule) => {
     dateStr: formatDateStr(date),
     weekday: DAY_LABELS[getUtcDateParts(date).weekday],
     startsAt: schedule.startsAt,
-    status: schedule.status,
+    status: effectiveKeywordStatus(schedule),
   };
 };
 
