@@ -4,16 +4,9 @@ import { IconBookmark, IconComment, IconHeart } from '../components/Icons.jsx';
 import { ReportModal } from '../components/ReportModal.jsx';
 import { useToast } from '../components/Toast.jsx';
 
-const EXTRA_POSTS = [
-  { id:7, title:'봄비와 함께 온 기억', body:'봄비가 내리던 날, 우리는 처음 만났다. 그 비가 이별의 전조였는지, 아니면 시작의 신호였는지 아직도 모르겠다. 다만 비 냄새가 나면 그 골목이 생각난다.', author:'윤서하', handle:'seoha', initial:'윤', time:'6시간 전', read:'2분', likes:29, comments:4, bookmarks:8, bookmarked:false },
-  { id:8, title:'다시 읽는 오래된 메시지', body:'지운 줄 알았는데 남아 있었다. 3년 전 너의 문장들. 맞춤법도 틀리고, 이모티콘도 어색한데 그때는 그게 전부였다. 화면을 오래 보다가 그냥 껐다.', author:'강태준', handle:'taejun', initial:'강', time:'7시간 전', read:'3분', likes:47, comments:11, bookmarks:19, bookmarked:false },
-  { id:9, title:'마지막으로 같이 먹은 밥', body:'헤어지기로 한 날, 우리는 이상하게도 밥을 먹었다. 둘 다 많이 먹었다. 배가 고파서가 아니라 그 시간을 조금 더 붙잡고 싶어서였을 것이다.', author:'오지민', handle:'jimin_o', initial:'오', time:'8시간 전', read:'2분', likes:63, comments:8, bookmarks:22, bookmarked:false },
-];
-
-export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks, follows, onToggleFollow, onReport, onBlockAuthor, todayKw, keywordFilter, onClearKeywordFilter, onSearch}) => {
+export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks, follows, onToggleFollow, onReport, onBlockAuthor, todayKw, stats, keywordFilter, onClearKeywordFilter, onSearch}) => {
   const toast = useToast();
   const [filter, setFilter] = useState('최신');
-  const [showExtra, setShowExtra] = useState(false);
   const [query, setQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState(null);
   const [reportTarget, setReportTarget] = useState(null);
@@ -39,7 +32,7 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
     setFilter(f);
   };
 
-  const allPosts = showExtra && !keywordFilter ? [...posts, ...EXTRA_POSTS] : posts;
+  const allPosts = posts;
   const sorted = filter === '인기'
     ? [...allPosts].sort((a,b) => b.likes - a.likes)
     : filter === '짧은 글'
@@ -99,7 +92,7 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
           </div>
           <div className="kw-side">
             <span className="label" style={{marginBottom:4}}>오늘 작성된 글</span>
-            <span className="big">{posts.filter(p => p.keywordId === todayKw.id || p.keyword?.id === todayKw.id).length.toLocaleString()}</span>
+            <span className="big">{(stats?.todayPosts ?? posts.filter(p => p.keywordId === todayKw.id || p.keyword?.id === todayKw.id).length).toLocaleString()}</span>
             <span className="meta">마감까지 · 14H 32M</span>
             <button className="btn accent sm" style={{marginTop:10, alignSelf:'flex-end'}} onClick={() => onNav('write')}>
               오늘의 글 쓰기 <span className="arr">→</span>
@@ -131,13 +124,13 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
         )}
 
         {/* Filter + search */}
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, padding:'20px 0 8px'}}>
-          <div style={{display:'flex', gap:8, flexWrap:'wrap'}}>
+        <div className="feed-filters-row" style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, padding:'20px 0 8px'}}>
+          <div className="feed-filters-chips" style={{display:'flex', gap:8, flexWrap:'wrap'}}>
             {filters.map(f => (
               <button key={f} className={`chip${filter===f?' active':''}`} onClick={() => handleFilter(f)}>{f}</button>
             ))}
           </div>
-          <div style={{display:'flex', gap:14, alignItems:'center'}}>
+          <div className="feed-filters-search" style={{display:'flex', gap:14, alignItems:'center'}}>
             <div style={{position:'relative'}}>
               <input
                 value={query}
@@ -248,10 +241,7 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
           ))}
           {visible.length > 0 && (
             <div style={{textAlign:'center', padding:'32px 0 16px'}}>
-              {!q && !showExtra && !keywordFilter
-                ? <button className="btn ghost" onClick={() => setShowExtra(true)}>더 많은 글 보기 <span className="arr">↓</span></button>
-                : <span className="meta">{q ? `검색 결과 · ${visible.length}편` : `모든 글을 불러왔습니다 · ${visible.length}편`}</span>
-              }
+              <span className="meta">{q ? `검색 결과 · ${visible.length}편` : `모든 글을 불러왔습니다 · ${visible.length}편`}</span>
             </div>
           )}
         </div>

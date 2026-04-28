@@ -79,6 +79,8 @@ export const getMe = (token) =>
 export const checkHandleAvailability = (handle) =>
   request(`/auth/handles/${encodeURIComponent(handle)}`);
 
+export const getStats = () => request('/stats');
+
 export const listPosts = (token, { keywordId, keyword, q } = {}) => {
   const params = new URLSearchParams();
   if (keywordId) params.set('keywordId', keywordId);

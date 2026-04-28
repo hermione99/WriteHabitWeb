@@ -12,10 +12,10 @@ import { ArchiveScreen } from './screens/ArchiveScreen.jsx';
 import { LoginScreen } from './screens/LoginScreen.jsx';
 import { SettingsScreen } from './screens/SettingsScreen.jsx';
 import { AdminScreen } from './screens/AdminScreen.jsx';
-import { blockUser, bookmarkPost, createDraft, createPost, createReport, deleteDraft, deletePost, followUser, getMe, getMySocialState, getTodayKeyword, likePost, listDrafts, listKeywordArchive, listNotifications, listPosts, markAllNotificationsRead, markNotificationRead, publishDraft, unblockUser, unbookmarkPost, unfollowUser, unlikePost, updateDraft, updateMyProfile, updatePost } from './lib/api.js';
+import { blockUser, bookmarkPost, createDraft, createPost, createReport, deleteDraft, deletePost, followUser, getMe, getMySocialState, getStats, getTodayKeyword, likePost, listDrafts, listKeywordArchive, listNotifications, listPosts, markAllNotificationsRead, markNotificationRead, publishDraft, unblockUser, unbookmarkPost, unfollowUser, unlikePost, updateDraft, updateMyProfile, updatePost } from './lib/api.js';
 import { sanitizeHandle } from './lib/handles.js';
 import { readJSON, readReports, readSet, readString, removeStorageKeys, writeJSON, writeReports, writeSet, writeString } from './lib/storage.js';
-import { ACCOUNT_STORAGE_KEYS, DEFAULT_NOTIFICATIONS, DEFAULT_PREFS, DEMO_EMAIL, INITIAL_POSTS, KEYWORD_POOL, KEYWORDS_ARCHIVE, SCHEDULED, STATUS_META, TODAY_KW } from './data/writehabitData.js';
+import { ACCOUNT_STORAGE_KEYS, DEFAULT_PREFS, DEMO_EMAIL, KEYWORD_POOL, KEYWORDS_ARCHIVE, SCHEDULED, STATUS_META, TODAY_KW } from './data/writehabitData.js';
 import './styles.css';
 
 /* ══════════════════════════════
@@ -26,16 +26,19 @@ const App = () => {
 
   const [screen, setScreen]   = useState(() => readString('wh_auth_token') || readString('wh_logged_in') ? 'feed' : 'login');
   const [dark, setDark]       = useState(() => readString('wh_dark') === '1');
-  const [posts, setPosts]     = useState(() => {
-    const savedPosts = readJSON('wh_posts', []);
-    return Array.isArray(savedPosts) && savedPosts.length ? savedPosts : INITIAL_POSTS;
-  });
+  const [posts, setPosts]     = useState([]);
   const [activePost, setPost]         = useState(null);
   const [activeProfile, setProfile]   = useState(null); // null = own profile, or {handle,author,initial,bio}
   const [editingDraft, setEditingDraft] = useState(null);
   const [drafts, setDrafts] = useState([]);
   const [todayKw, setTodayKw] = useState(TODAY_KW);
   const [keywordArchive, setKeywordArchive] = useState(KEYWORDS_ARCHIVE);
+  const [stats, setStats] = useState({
+    serviceDays: Number(TODAY_KW.no) || 1,
+    users: 0,
+    posts: 0,
+    todayPosts: 0,
+  });
   const [feedKeyword, setFeedKeyword] = useState(null);
   const [user, setUser]       = useState(() => {
     const saved = readString('wh_auth_token') || readString('wh_logged_in');
@@ -104,6 +107,11 @@ const App = () => {
     getTodayKeyword()
       .then(({ keyword }) => {
         if (keyword?.word) setTodayKw(keyword);
+      })
+      .catch(() => {});
+    getStats()
+      .then(({ stats: remoteStats }) => {
+        if (remoteStats) setStats(remoteStats);
       })
       .catch(() => {});
     listKeywordArchive()
@@ -198,7 +206,7 @@ const App = () => {
     /* clear EVERYTHING */
     removeStorageKeys(ACCOUNT_STORAGE_KEYS);
     setUser(null);
-    setPosts(INITIAL_POSTS);
+    setPosts([]);
     setBlocks(new Set());
     setFollows(new Set());
     setNotifications([]);
@@ -234,7 +242,7 @@ const App = () => {
   const [notifications, setNotifications] = useState(() => {
     const saved = readJSON('wh_notifications', null);
     if (saved) return saved;
-    return DEFAULT_NOTIFICATIONS;
+    return [];
   });
   useEffect(() => {
     writeJSON('wh_notifications', notifications);
@@ -663,7 +671,7 @@ const App = () => {
   };
 
   if (screen === 'login') {
-    return <LoginScreen onLogin={onLogin} todayKw={todayKw} knownHandles={INITIAL_POSTS.map(p => p.handle)} />;
+    return <LoginScreen onLogin={onLogin} todayKw={todayKw} stats={stats} knownHandles={[]} />;
   }
 
   const commonProps = { onNav, dark, onToggleDark };
@@ -671,7 +679,7 @@ const App = () => {
   return (
     <div>
       {!onboarded && user && (
-        <OnboardingOverlay onDone={onCompleteOnboarding} onSkip={onSkipOnboarding} onNav={onNav} />
+        <OnboardingOverlay onDone={onCompleteOnboarding} onSkip={onSkipOnboarding} onNav={onNav} stats={stats} />
       )}
       {screen !== 'write' && screen !== 'admin' && (
         <TopBar active={screen} {...commonProps} user={user} onLogout={onLogout}
@@ -686,6 +694,7 @@ const App = () => {
                                   onToggleLike={onToggleLike} onToggleBookmark={onToggleBookmark}
                                   blocks={blocks} follows={follows} onToggleFollow={onToggleFollow}
                                   onReport={onReport} onBlockAuthor={onBlockAuthor} todayKw={todayKw}
+                                  stats={stats}
                                   keywordFilter={feedKeyword} onSearch={onSearchPosts}
                                   onClearKeywordFilter={() => onNav('feed')} />}
       {screen === 'write'   && <WriteScreen   {...commonProps} onPublish={onPublish} onSaveDraft={onSaveDraft} user={user} todayKw={todayKw}
@@ -700,7 +709,7 @@ const App = () => {
                                   onToggleLike={onToggleLike} onToggleBookmark={onToggleBookmark}
                                   user={user} onEditPost={onEditPost} onDeletePost={onDeletePost}
                                   blocks={blocks} follows={follows} onToggleFollow={onToggleFollow}
-                                  onReport={onReport} onBlockAuthor={onBlockAuthor} todayKw={todayKw} />}
+                                  onReport={onReport} onBlockAuthor={onBlockAuthor} todayKw={todayKw} stats={stats} />}
       {screen === 'profile' && <ProfileScreen {...commonProps} posts={posts} user={user} onLogout={onLogout}
                                   viewUser={activeProfile}
                                   onUpdateUser={onUpdateUser}

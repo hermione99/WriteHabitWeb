@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 
-const ONBOARDING_STEPS = [
+const buildOnboardingSteps = (stats) => [
   {
     eyebrow: '01 · WELCOME',
     title: '환영합니다.',
-    body: '하루에 한 번, 하나의 키워드. 오늘부터 매일 한 줄을 남겨보세요.\n\n344일째, 28,419명이 이미 쓰고 있습니다.',
+    body: `하루에 한 번, 하나의 키워드. 오늘부터 매일 한 줄을 남겨보세요.\n\n${stats?.serviceDays ?? 1}일째, ${(stats?.users ?? 0).toLocaleString()}명이 이미 쓰고 있습니다.`,
     cta: '시작하기',
   },
   {
@@ -27,8 +27,9 @@ const ONBOARDING_STEPS = [
   },
 ];
 
-export const OnboardingOverlay = ({ onDone, onSkip, onNav }) => {
+export const OnboardingOverlay = ({ onDone, onSkip, onNav, stats }) => {
   const [step, setStep] = useState(0);
+  const ONBOARDING_STEPS = buildOnboardingSteps(stats);
   const currentStep = ONBOARDING_STEPS[step];
   const isLast = step === ONBOARDING_STEPS.length - 1;
 

@@ -6,13 +6,7 @@ import { useToast } from '../components/Toast.jsx';
 import { createComment, deleteComment, listComments } from '../lib/api.js';
 import { readJSON, readString } from '../lib/storage.js';
 
-const DEFAULT_COMMENTS = [
-  {id:1, n:'정윤', i:'정', t:'2분 전', body:'마지막 문단에서 울컥했어요. "이별을 견딘 나 자신" 이 문장이 오래 남을 것 같습니다.', cl:12, liked:false, replyOpen:false, replyText:''},
-  {id:2, n:'김도현', i:'김', t:'18분 전', body:'서른의 이별에 대한 묘사가 너무 구체적이고 솔직해서 좋았습니다. 덕분에 제 경험이 다시 떠올랐어요.', cl:5, liked:false, replyOpen:false, replyText:''},
-  {id:3, n:'박서연', i:'박', t:'1시간 전', body:'조용히 찾아와서 조용히 떠난다는 표현, 문장이 너무 정확해서 한참 멈춰 있었습니다.', cl:2, liked:false, replyOpen:false, replyText:''},
-];
-
-export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark, user, onEditPost, onDeletePost, blocks, follows, onToggleFollow, onReport, onBlockAuthor, todayKw}) => {
+export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark, user, onEditPost, onDeletePost, blocks, follows, onToggleFollow, onReport, onBlockAuthor, todayKw, stats}) => {
   const toast = useToast();
   const p = post || posts[0];
   const postIndex = posts.findIndex(x => x.id === p.id);
@@ -55,7 +49,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
   const [commentsSource, setCommentsSource] = useState('local');
   const [comments, setComments] = useState(() => {
     const all = readJSON('wh_comments', {});
-    return all[p.id] || DEFAULT_COMMENTS;
+    return all[p.id] || [];
   });
 
   useEffect(() => {
@@ -67,7 +61,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
       })
       .catch(() => {
         const all = readJSON('wh_comments', {});
-        setComments(all[p.id] || DEFAULT_COMMENTS);
+        setComments(all[p.id] || []);
         setCommentsSource('local');
       });
   }, [p.id]);
@@ -244,10 +238,6 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
           {/* Body */}
           <div className="article-body">
             <p>{p.body}</p>
-            <p>그는 마지막 인사조차 하지 않았다. 어떤 이별은 말없이 완성된다. 대답 없는 질문들만 남기고. 우리는 헤어졌다는 문장 하나로 설명될 수 없는 것들. 그 사이에 놓인 무수한 오후와, 함께 듣던 노래와, 두 번 다시 웃지 않을 농담 같은 것들.</p>
-            <blockquote>이별은 사람이 떠나는 일이 아니라, 그 사람과 살던 내가 한 명 더 죽는 일이다.</blockquote>
-            <p>서른은 이별의 나이다. 청춘의 마지막 정거장에서 많은 것들이 한꺼번에 내린다. 친구들의 연락이 뜸해지고, 한때 소중했던 취향들이 낯설어진다. 부모의 전화에 처음으로 불안을 느끼고, 내가 누구였는지를 자주 잊는다.</p>
-            <p>그래도 아침은 온다. 커피를 내리고, 창문을 열고, 오늘도 한 줄을 쓴다. 이별 다음에 오는 것은 새로운 만남이 아니라, 이별을 견딘 나 자신이라는 걸 이제 안다.</p>
           </div>
 
           {/* Actions */}
@@ -360,10 +350,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
             <div className="meta" style={{fontSize:10.5, marginTop:6}}>{todayKw.eng} · NO. {todayKw.no}</div>
             <div className="rule-s" style={{margin:'14px 0'}}/>
             <div style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--ink-soft)'}}>
-              <span>오늘 작성</span><span style={{fontWeight:600, fontVariantNumeric:'tabular-nums'}}>1,247</span>
-            </div>
-            <div style={{display:'flex', justifyContent:'space-between', fontSize:12, color:'var(--ink-soft)', marginTop:6}}>
-              <span>현재 읽는 중</span><span style={{fontWeight:600}}>84</span>
+              <span>오늘 작성</span><span style={{fontWeight:600, fontVariantNumeric:'tabular-nums'}}>{(stats?.todayPosts ?? 0).toLocaleString()}</span>
             </div>
             <button className="btn sm accent" style={{width:'100%', justifyContent:'center', marginTop:16}} onClick={() => onNav('write')}>
               나도 쓰기 <span className="arr">→</span>
@@ -383,10 +370,6 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
             <p style={{fontSize:12.5, color:'var(--ink-mute)', lineHeight:1.6, margin:'12px 0'}}>
               서울에서 글을 씁니다. 조용한 감정과 사소한 장면을 기록하는 일을 좋아합니다.
             </p>
-            <div style={{display:'flex', gap:16, fontFamily:'var(--f-mono)', fontSize:11, color:'var(--ink-mute)'}}>
-              <span><span style={{color:'var(--ink)'}}>184</span> 글</span>
-              <span><span style={{color:'var(--ink)'}}>2.3k</span> 팔로워</span>
-            </div>
             {isMine ? (
               <div style={{display:'flex', gap:6, marginTop:14}}>
                 <button className="btn sm" style={{flex:1, justifyContent:'center'}} onClick={handleEdit}>수정</button>

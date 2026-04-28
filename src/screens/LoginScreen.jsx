@@ -22,7 +22,7 @@ const LoginField = ({id, label, type='text', value, onChange, placeholder, err, 
   </div>
 );
 
-export const LoginScreen = ({onLogin, todayKw, knownHandles = []}) => {
+export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
   const toast = useToast();
 
   /* mode: 'login' | 'signup' | 'reset' */
@@ -163,7 +163,11 @@ export const LoginScreen = ({onLogin, todayKw, knownHandles = []}) => {
             하루에 한 번,<br/>하나의 키워드에<br/>당신의 문장을 남겨보세요.
           </p>
           <div style={{display:'flex', gap:40, marginTop:56, paddingTop:24, borderTop:'1px solid var(--rule-soft)'}}>
-            {[[todayKw.no.replace(/^0+/,''),'일째'],['28,419','명의 작가'],['428K','편의 글']].map(([n,l]) => (
+            {[
+              [stats?.serviceDays ?? todayKw.no.replace(/^0+/,''), '일째'],
+              [(stats?.users ?? 0).toLocaleString(), '명의 작가'],
+              [(stats?.posts ?? 0).toLocaleString(), '편의 글'],
+            ].map(([n,l]) => (
               <div key={l}>
                 <div style={{fontFamily:'var(--f-latin)', fontWeight:700, fontSize:24, letterSpacing:'-0.03em', color:'var(--ink)'}}>{n}</div>
                 <div className="meta" style={{fontSize:10.5, marginTop:2}}>{l}</div>
