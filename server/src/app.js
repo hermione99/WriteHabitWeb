@@ -11,6 +11,7 @@ import { notificationsRouter } from './routes/notifications.js';
 import { postsRouter } from './routes/posts.js';
 import { socialRouter } from './routes/social.js';
 import { statsRouter } from './routes/stats.js';
+import { streaksRouter } from './routes/streaks.js';
 import { uploadsRouter, UPLOADS_ROOT } from './routes/uploads.js';
 import { usersRouter } from './routes/users.js';
 
@@ -41,6 +42,7 @@ export const createApp = () => {
   app.use('/api', healthRouter);
   app.use('/api', keywordsRouter);
   app.use('/api', statsRouter);
+  app.use('/api', streaksRouter);
   app.use('/api', authRouter);
   app.use('/api', notificationsRouter);
   app.use('/api', postsRouter);

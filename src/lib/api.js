@@ -266,6 +266,18 @@ export const listKeywordArchive = () => request('/keywords/archive');
 
 export const listUpcomingKeywords = () => request('/keywords/upcoming');
 
+export const getMyStreak = ({ year, month, token }) => {
+  const params = new URLSearchParams();
+  if (year) params.set('year', year);
+  if (month) params.set('month', month);
+  const query = params.toString();
+  return request(`/streaks/me${query ? `?${query}` : ''}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+};
+
 export const getMySocialState = (token) =>
   request('/social/me', {
     headers: {

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../components/Toast.jsx';
+import { getMyStreak } from '../lib/api.js';
+import { readString } from '../lib/storage.js';
 
 const formatMonthDay = (date) => {
   const value = new Date(date);
@@ -27,6 +29,7 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
   const [filterMonth, setFilterMonth] = useState(months[0] || '04');
   const [yearOpen, setYearOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
+  const [streak, setStreak] = useState(null);
 
   useEffect(() => {
     if (years.length && !years.includes(filterYear)) setFilterYear(years[0]);
@@ -43,15 +46,36 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
     .slice(0, 4);
   const now = new Date();
   const daysInMonth = new Date(Number(filterYear), Number(filterMonth), 0).getDate();
-  const keywordDateSet = new Set(filteredKeywords.map((k) => k.startsAt ? formatMonthDay(k.startsAt) : k.date));
+  const keywordByDate = new Map(filteredKeywords.map((k) => [k.startsAt ? formatMonthDay(k.startsAt) : k.date, k]));
+  const streakByDay = new Map((streak?.days || []).map((day) => [day.day, day]));
   const grid = Array.from({length: daysInMonth}, (_, i) => {
     const dateKey = `${filterMonth}·${String(i + 1).padStart(2, '0')}`;
     const cellDate = new Date(Number(filterYear), Number(filterMonth) - 1, i + 1);
     const isToday = cellDate.toDateString() === now.toDateString();
-    if (isToday) return 'today';
-    if (cellDate > now) return 'future';
-    return keywordDateSet.has(dateKey) ? 'on' : 'none';
+    const dayState = streakByDay.get(i + 1);
+    const keyword = keywordByDate.get(dateKey) || dayState?.keyword;
+    const status = dayState?.status || (isToday ? 'today' : cellDate > now ? 'future' : keyword ? 'missed' : 'none');
+    return { status, keyword, written: Boolean(dayState?.written) };
   });
+
+  useEffect(() => {
+    const token = readString('wh_auth_token');
+    if (!token) {
+      setStreak(null);
+      return;
+    }
+    let cancelled = false;
+    getMyStreak({ year: filterYear, month: filterMonth, token })
+      .then(({ streak: remoteStreak }) => {
+        if (!cancelled) setStreak(remoteStreak || null);
+      })
+      .catch(() => {
+        if (!cancelled) setStreak(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filterYear, filterMonth]);
 
   const handleRead = (k) => {
     toast(`${k.word} · ${k.eng} — 글 목록으로 이동합니다`);
@@ -61,6 +85,16 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
   const handleTopKw = (word) => {
     toast(`${word} — 글 목록으로 이동합니다`);
     onNav('feed', { keyword: { word } });
+  };
+
+  const handleCalendarDay = (day) => {
+    if (day.status === 'future') return;
+    if (!day.keyword?.word) {
+      toast('이 날짜에는 연결된 키워드가 없습니다.');
+      return;
+    }
+    toast(`${day.keyword.word} — 글 목록으로 이동합니다`);
+    onNav('feed', { keyword: day.keyword });
   };
 
   const DropFilter = ({label, value, open, onToggle, options, onSelect}) => (
@@ -116,19 +150,20 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
               <span className="meta">{filteredKeywords.length.toLocaleString()} KEYWORDS</span>
             </div>
             <div className="cal">
-              {grid.map((s, i) => (
+              {grid.map((day, i) => (
                 <div key={i}
-                  className={`d${s==='today'?' today':s==='future'?'':s==='on'?' on':s==='on-light'?' on-light':''}`}
-                  style={{...(s==='future'?{opacity:0.25}:{}), ...(s!=='future'&&s!=='today'?{cursor:'pointer'}:{})}}
-                  onClick={() => s !== 'future' && s !== 'today' && toast(`이 날의 키워드 글 보기`)}>
-                  {s==='today'?'●':''}
+                  className={`d${day.status === 'today' ? ' today' : day.status === 'written' ? ' on' : day.status === 'missed' ? ' missed' : ''}`}
+                  title={day.keyword?.word ? `${day.keyword.no || ''} ${day.keyword.word}` : undefined}
+                  style={{...(day.status === 'future'?{opacity:0.25}:{}), ...(day.status !== 'future'?{cursor:'pointer'}:{})}}
+                  onClick={() => handleCalendarDay(day)}>
+                  {day.status === 'today' ? (day.written ? '✓' : '●') : ''}
                 </div>
               ))}
             </div>
             <div style={{display:'flex', gap:14, marginTop:16, fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', alignItems:'center'}}>
-              {[['var(--accent)','오늘'],['var(--ink)','작성함'],['var(--paper-3)','읽기만'],['transparent','미작성']].map(([bg,label], i) => (
+              {[['var(--accent)','오늘'],['var(--ink)','작성함'],['var(--paper-3)','미작성']].map(([bg,label]) => (
                 <span key={label} style={{display:'inline-flex', alignItems:'center', gap:6}}>
-                  <span style={{width:10, height:10, background:bg, border:i===3?'1px solid var(--rule-ghost)':'none', display:'block'}}/>
+                  <span style={{width:10, height:10, background:bg, display:'block'}}/>
                   {label}
                 </span>
               ))}
@@ -168,7 +203,7 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
                     <span style={{marginLeft:14, color:'var(--ink-faint)', fontFamily:'var(--f-serif)', fontSize:14, letterSpacing:'0.08em'}}>{k.eng}</span>
                   </div>
                   <div className="meta" style={{fontSize:10.5, marginTop:2}}>
-                    NO. {String(Math.max(1, keywordDays - i)).padStart(4,'0')}
+                    NO. {k.no || String(Math.max(1, keywordDays - i)).padStart(4,'0')}
                   </div>
                 </div>
                 <div className="kcount">{k.count.toLocaleString()}<small>글</small></div>

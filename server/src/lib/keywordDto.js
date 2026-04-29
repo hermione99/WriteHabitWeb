@@ -62,6 +62,7 @@ export const toKeywordArchiveItem = (schedule) => ({
   id: schedule.keywordId,
   scheduleId: schedule.id,
   date: formatShortDate(new Date(schedule.startsAt)),
+  no: formatKeywordNo(new Date(schedule.startsAt)),
   word: schedule.keyword?.text || '',
   eng: schedule.keyword?.eng || '',
   count: schedule.keyword?._count?.posts || 0,

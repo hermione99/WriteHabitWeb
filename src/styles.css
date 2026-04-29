@@ -360,7 +360,7 @@ body {
   cursor: pointer; transition: background 0.15s;
 }
 .cal .d.on       { background: var(--ink);    color: var(--paper); border-color: var(--ink); }
-.cal .d.on-light { background: var(--paper-3); color: var(--ink);  border-color: transparent; }
+.cal .d.missed   { background: var(--paper-3); color: var(--ink);  border-color: transparent; }
 .cal .d.today    { background: var(--accent); color: #fff;         border-color: var(--accent); }
 .cal .d:hover:not(.today):not(.on) { background: var(--paper-2); }
 
