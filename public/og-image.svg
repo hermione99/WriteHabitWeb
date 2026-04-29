@@ -1,0 +1,14 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="630" fill="#F6F1E8"/>
+  <rect x="54" y="54" width="1092" height="522" rx="18" fill="#FCFAF4" stroke="#DDD6C9" stroke-width="2"/>
+  <text x="104" y="132" fill="#1E1D19" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">Write</text>
+  <text x="204" y="132" fill="#D94B1E" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">Habit</text>
+  <line x1="104" y1="174" x2="1096" y2="174" stroke="#1E1D19" stroke-width="2"/>
+  <text x="104" y="274" fill="#1E1D19" font-family="'Apple SD Gothic Neo', 'Noto Serif KR', serif" font-size="68" font-weight="700">매일 하나의 키워드로</text>
+  <text x="104" y="356" fill="#1E1D19" font-family="'Apple SD Gothic Neo', 'Noto Serif KR', serif" font-size="68" font-weight="700">쓰는 글</text>
+  <text x="104" y="428" fill="#706B61" font-family="'Apple SD Gothic Neo', Pretendard, sans-serif" font-size="30">하루에 하나의 키워드를 받고, 짧은 글을 쓰고,</text>
+  <text x="104" y="472" fill="#706B61" font-family="'Apple SD Gothic Neo', Pretendard, sans-serif" font-size="30">다른 사람의 문장을 읽어보세요.</text>
+  <rect x="104" y="514" width="194" height="44" rx="22" fill="#1E1D19"/>
+  <text x="132" y="544" fill="#FCFAF4" font-family="Inter, Pretendard, sans-serif" font-size="20" font-weight="600" letter-spacing="1.8">WRITEHABIT.CO</text>
+  <text x="862" y="544" fill="#D94B1E" font-family="Georgia, 'Times New Roman', serif" font-size="34" font-weight="700">오늘의 기록 습관</text>
+</svg>
