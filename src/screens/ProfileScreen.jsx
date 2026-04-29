@@ -18,6 +18,7 @@ const formatJoinDate = (date) => {
   if (Number.isNaN(joined.getTime())) return 'WRITER';
   return `WRITER · SINCE ${joined.getFullYear()}·${String(joined.getMonth() + 1).padStart(2, '0')}`;
 };
+const isModernHandle = (handle = '') => /^[a-z][a-z0-9_]{2,19}$/.test(handle);
 const profileToUserListItem = (profile) => ({
   name: profile.displayName || profile.author || profile.name || profile.handle,
   handle: profile.handle,
@@ -106,6 +107,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
   const handle  = profileUser.handle || 'user';
   const bio     = profileUser.bio || '소개가 없습니다.';
   const initial = profileUser.initial || name[0];
+  const needsHandleUpdate = isOwnProfile && user?.handle && !isModernHandle(user.handle);
 
   const openEdit = () => {
     setEditNick(user?.nickname || '');
@@ -367,6 +369,29 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
             )}
           </div>
         </section>
+
+        {needsHandleUpdate && (
+          <section style={{
+            margin:'24px 0 0',
+            padding:'18px 20px',
+            border:'1px solid rgba(192, 91, 43, 0.28)',
+            background:'rgba(192, 91, 43, 0.07)',
+            display:'grid',
+            gridTemplateColumns:'1fr auto',
+            gap:16,
+            alignItems:'center',
+          }}>
+            <div>
+              <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:18, color:'var(--ink)', marginBottom:6}}>
+                프로필 핸들을 새 형식으로 바꿔주세요
+              </div>
+              <div style={{fontFamily:'var(--f-kr)', fontSize:13, lineHeight:1.7, color:'var(--ink-soft)'}}>
+                앞으로 핸들은 공유 링크와 프로필 주소에만 쓰이며, 영문 소문자로 시작하고 영문/숫자/_만 사용할 수 있습니다. 글과 댓글에는 계속 닉네임만 표시됩니다.
+              </div>
+            </div>
+            <button className="btn sm solid" onClick={openEdit}>핸들 변경</button>
+          </section>
+        )}
 
         {isOwnProfile && editing && (
           <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.35)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center', padding:20}}
