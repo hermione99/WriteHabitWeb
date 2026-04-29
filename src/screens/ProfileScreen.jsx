@@ -6,9 +6,9 @@ import { readString } from '../lib/storage.js';
 import { useToast } from '../components/Toast.jsx';
 
 const STREAK_PERIODS = {
-  '30일': { key: '30' },
-  '90일': { key: '90' },
-  '1년':  { key: '365' },
+  '30일': { key: '30', columns: 30 },
+  '90일': { key: '90', columns: 45 },
+  '1년':  { key: '365', columns: 53 },
 };
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR');
@@ -156,7 +156,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     return () => window.removeEventListener('keydown', onKey);
   }, [editing]);
 
-  const { key: streakKey } = STREAK_PERIODS[streakPeriod];
+  const { key: streakKey, columns: streakColumns } = STREAK_PERIODS[streakPeriod];
   const streakActivity = remoteProfile?.stats?.streak?.activity?.[streakKey] || [];
   const streakData = streakActivity.map((active, i) => (
     i === streakActivity.length - 1 && remoteProfile?.stats?.streak?.completedToday ? 'today' : active ? 'on' : 'off'
@@ -470,9 +470,9 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
                 ))}
               </div>
             </div>
-            <div className="streak" style={{overflowX:'auto'}}>
+            <div className="streak" style={{gridTemplateColumns:`repeat(${streakColumns}, minmax(3px, 1fr))`}}>
               {(streakData.length ? streakData : Array.from({ length: Number(streakKey) }, () => 'off')).map((s, i) => (
-                <div key={i} className={`b ${s}`} style={{height: s==='off'?12 : s==='on'?30+((i*7)%40) : 74, flexShrink:0}} />
+                <div key={i} className={`b ${s}`} />
               ))}
             </div>
             <div style={{display:'flex', justifyContent:'space-between', marginTop:8, fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-mute)'}}>

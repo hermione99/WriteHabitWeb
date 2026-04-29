@@ -365,8 +365,8 @@ body {
 .cal .d:hover:not(.today):not(.on) { background: var(--paper-2); }
 
 /* ── Streak bars ── */
-.streak { display: grid; grid-template-columns: repeat(30, 1fr); gap: 3px; align-items: end; height: 80px; }
-.streak .b { background: var(--paper-3); width: 100%; border-radius: 1px; transition: background 0.2s; }
+.streak { display: grid; gap: 4px; align-items: stretch; }
+.streak .b { aspect-ratio: 1; background: var(--paper-3); width: 100%; border-radius: 1px; transition: background 0.2s; }
 .streak .b.on    { background: var(--ink); }
 .streak .b.today { background: var(--accent); }
 
@@ -568,8 +568,7 @@ body {
     grid-template-columns: 1fr !important;
   }
 
-  /* Streak + calendar: allow horizontal scroll if too wide */
-  .streak { overflow-x: auto; }
+  .streak { gap: 3px; }
   .cal { gap: 3px; }
   .cal .d { font-size: 9px; }
 
