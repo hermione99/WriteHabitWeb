@@ -24,6 +24,7 @@ export const toPublicPost = (post, viewer = null) => {
     handle: post.author.handle,
     initial: authorName[0] || '?',
     avatarUrl: post.author.avatarUrl || null,
+    authorBio: post.author.bio || '',
     time: formatRelativeTime(post.createdAt),
     read: formatReadTime(post.body),
     likes: post._count?.likes || 0,

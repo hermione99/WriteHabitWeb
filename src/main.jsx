@@ -47,9 +47,9 @@ const App = () => {
     if (!saved) return null;
     const profile = readJSON('wh_profile', {});
     return {
-      nickname: profile.nickname || '김민지',
+      nickname: profile.nickname || '사용자',
       email:    profile.email    || '',
-      bio:      profile.bio      || '매일 한 줄, 주로 저녁에. 조용한 것들에 대해 씁니다.',
+      bio:      profile.bio      || '',
     };
   });
 
@@ -520,7 +520,7 @@ const App = () => {
   };
 
   const buildLocalPost = ({ title, body, bodyHtml }) => {
-    const name = user?.nickname || '김민지';
+    const name = user?.nickname || '사용자';
     const h    = user?.handle || sanitizeHandle(name) || 'user';
     /* 한글 기준 분당 약 350자 읽기 속도 */
     const readMin = Math.max(1, Math.ceil((body || '').length / 350));

@@ -19,7 +19,7 @@ export const TopBar = ({
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const initial = user?.nickname?.[0] || '민';
+  const initial = user?.nickname?.[0] || '?';
   const unreadCount = notifications.filter((n) => !n.read).length;
   const handleNotifClick = (n) => {
     setNotifOpen(false);
@@ -285,7 +285,7 @@ export const TopBar = ({
                 >
                   <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid var(--rule-ghost)' }}>
                     <div style={{ fontFamily: 'var(--f-kr)', fontWeight: 600, fontSize: 13, color: 'var(--ink)' }}>
-                      {user?.nickname || '김민지'}
+                      {user?.nickname || '사용자'}
                     </div>
                     <div className="meta" style={{ fontSize: 10.5 }}>
                       {user?.email || ''}

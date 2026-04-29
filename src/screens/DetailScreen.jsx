@@ -66,6 +66,19 @@ const sanitizeArticleHtml = (html = '') => {
 
 const getArticleHtml = (post) => sanitizeArticleHtml(post.bodyHtml || '') || textToArticleHtml(post.body || '');
 
+const formatPostDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).replace(/\. /g, '·').replace(/\.$/, '');
+};
+
 export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark, user, onEditPost, onDeletePost, blocks, follows, onToggleFollow, onReport, onBlockAuthor, todayKw, stats}) => {
   const toast = useToast();
   const p = post || posts[0];
@@ -176,8 +189,8 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
       id: tempId,
       postId: p.id,
       authorId: user?.id,
-      n: user?.nickname || '김민지',
-      i: user?.nickname?.[0] || '민',
+      n: user?.nickname || '사용자',
+      i: user?.nickname?.[0] || '?',
       handle: user?.handle,
       avatarUrl: user?.avatarUrl || null,
       t: '방금',
@@ -248,9 +261,19 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
   };
 
   const submitReply = (id) => {
+    if (!user) {
+      toast('답글을 남기려면 로그인이 필요합니다.', 'error');
+      return;
+    }
     setComments(cs => cs.map(c => {
       if (c.id !== id || !c.replyText?.trim()) return c;
-      return {...c, replyOpen: false, replyText: '', replies: [...(c.replies||[]), {n:'김민지', i:'민', t:'방금', body:c.replyText}]};
+      return {...c, replyOpen: false, replyText: '', replies: [...(c.replies||[]), {
+        n: user?.nickname || '사용자',
+        i: user?.nickname?.[0] || '?',
+        avatarUrl: user?.avatarUrl || null,
+        t: '방금',
+        body: c.replyText,
+      }]};
     }));
   };
 
@@ -292,7 +315,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                 {p.author}
               </div>
               <div className="meta" style={{fontSize:11, marginTop:2}}>
-                2026·04·23 · 14:32 · 읽기 {p.read}
+                {formatPostDate(p.createdAt) || p.time} · 읽기 {p.read}
                 {p.edited && <span style={{marginLeft:6, color:'var(--ink-faint)'}}>· 수정됨</span>}
               </div>
             </div>
@@ -351,7 +374,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
 
             {/* Comment form */}
             <div style={{display:'grid', gridTemplateColumns:'36px 1fr', gap:14, marginBottom:20}}>
-              <Avatar url={user?.avatarUrl} initial={user?.nickname?.[0] || '민'} size={36} />
+              <Avatar url={user?.avatarUrl} initial={user?.nickname?.[0] || '?'} size={36} />
               <div>
                 <textarea
                   className="field"
@@ -399,7 +422,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                     {/* Inline reply form */}
                     {c.replyOpen && (
                       <div style={{marginTop:10, display:'grid', gridTemplateColumns:'28px 1fr', gap:10}}>
-                        <Avatar url={user?.avatarUrl} initial={user?.nickname?.[0] || '민'} size={28} fontSize={11} />
+                        <Avatar url={user?.avatarUrl} initial={user?.nickname?.[0] || '?'} size={28} fontSize={11} />
                         <div>
                           <textarea
                             placeholder={`${c.n}님에게 답글...`}
@@ -417,7 +440,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                     {/* Replies */}
                     {c.replies?.map((r, ri) => (
                       <div key={ri} style={{marginTop:10, display:'grid', gridTemplateColumns:'28px 1fr', gap:10, paddingLeft:4, borderLeft:'2px solid var(--rule-ghost)'}}>
-                        <Avatar url={r.avatarUrl} initial={r.i || '민'} size={28} fontSize={11} />
+                        <Avatar url={r.avatarUrl} initial={r.i || '?'} size={28} fontSize={11} />
                         <div>
                           <div className="c-head"><span className="c-author">{r.n}</span><span className="c-time">{r.t}</span></div>
                           <div className="c-body" style={{fontSize:13}}>{r.body}</div>
@@ -446,6 +469,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
             </button>
           </div>
 
+          {p.authorBio && (
           <div className="panel">
             <h4>작가 소개</h4>
             <div style={{display:'flex', gap:10, alignItems:'center'}}>
@@ -456,7 +480,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
               </div>
             </div>
             <p style={{fontSize:12.5, color:'var(--ink-mute)', lineHeight:1.6, margin:'12px 0'}}>
-              서울에서 글을 씁니다. 조용한 감정과 사소한 장면을 기록하는 일을 좋아합니다.
+              {p.authorBio}
             </p>
             {isMine ? (
               <div style={{display:'flex', gap:6, marginTop:14}}>
@@ -470,6 +494,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
               </button>
             )}
           </div>
+          )}
 
           <div className="panel">
             <h4>이 키워드 다른 글</h4>
