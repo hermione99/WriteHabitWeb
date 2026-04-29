@@ -1,4 +1,4 @@
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 
@@ -25,7 +25,28 @@ const outputFile = resolve(outputDir, args.get('file') || `writehabit-${stamp}.d
 
 await mkdir(outputDir, { recursive: true });
 
-const pgDump = spawn('pg_dump', [
+const candidateBins = [
+  args.get('pg-dump'),
+  process.env.PG_DUMP_BIN,
+  '/opt/homebrew/opt/postgresql@17/bin/pg_dump',
+  '/usr/local/opt/postgresql@17/bin/pg_dump',
+  'pg_dump',
+].filter(Boolean);
+
+let pgDumpBin = 'pg_dump';
+for (const candidate of candidateBins) {
+  if (candidate === 'pg_dump') {
+    pgDumpBin = candidate;
+    break;
+  }
+  try {
+    await access(candidate);
+    pgDumpBin = candidate;
+    break;
+  } catch {}
+}
+
+const pgDump = spawn(pgDumpBin, [
   '--format=custom',
   '--no-owner',
   '--no-acl',
@@ -38,7 +59,7 @@ const pgDump = spawn('pg_dump', [
 
 pgDump.on('error', (error) => {
   if (error.code === 'ENOENT') {
-    console.error('pg_dump was not found. Install PostgreSQL client tools and make sure pg_dump is in PATH.');
+    console.error('pg_dump was not found. Install PostgreSQL client tools and make sure pg_dump is in PATH, or pass --pg-dump /path/to/pg_dump.');
   } else {
     console.error(error.message);
   }

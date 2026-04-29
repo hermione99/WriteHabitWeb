@@ -91,6 +91,19 @@ DATABASE_URL="postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require" npm ru
 
 The command writes a timestamped custom-format dump to `backups/`. The folder is intentionally gitignored because dumps may contain user data.
 
+Neon currently runs PostgreSQL 17. If a local backup fails with a server version mismatch, install PostgreSQL 17 client tools and use that `pg_dump`:
+
+```bash
+brew install postgresql@17
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require" npm run backup:db
+```
+
+The backup script automatically prefers `/opt/homebrew/opt/postgresql@17/bin/pg_dump` on Apple Silicon Macs. You can also pass a custom binary:
+
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require" npm run backup:db -- --pg-dump /path/to/pg_dump
+```
+
 Restore drill, only against a temporary database or Neon branch:
 
 ```bash
