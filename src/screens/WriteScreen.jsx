@@ -445,7 +445,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
           </button>
         </div>
       }/>
-      <div className="wrap-narrow" style={{paddingTop:40}}>
+      <div className="wrap-narrow write-wrap" style={{paddingTop:40}}>
         {isEditing && (
           <div style={{
             display:'flex', justifyContent:'space-between', alignItems:'center', gap:12,
