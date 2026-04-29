@@ -20,7 +20,7 @@ const getKeywordMonth = (keyword) => keyword.startsAt
   ? String(new Date(keyword.startsAt).getMonth() + 1).padStart(2, '0')
   : (keyword.date || '').split('·')[0] || '04';
 
-export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
+export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
   const toast = useToast();
   const [showMore, setShowMore] = useState(false);
   const years = [...new Set(keywords.map(getKeywordYear))].sort((a, b) => b.localeCompare(a));
@@ -40,7 +40,28 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
   const keywordDays = stats?.serviceDays || keywords.length;
   const totalWritings = stats?.posts ?? keywords.reduce((sum, k) => sum + (k.count || 0), 0);
   const visibleKeywords = showMore ? filteredKeywords : filteredKeywords.slice(0, 10);
-  const topKeywords = [...keywords]
+  const todayKeywordForRank = todayKw?.word
+    ? {
+        ...todayKw,
+        id: todayKw.id,
+        word: todayKw.word,
+        eng: todayKw.eng,
+        count: stats?.todayPosts ?? 0,
+        startsAt: todayKw.startsAt,
+      }
+    : null;
+  const topKeywordCandidates = [...keywords, ...(todayKeywordForRank ? [todayKeywordForRank] : [])]
+    .reduce((map, keyword) => {
+      const key = keyword.id || keyword.word;
+      if (!key) return map;
+      const existing = map.get(key);
+      map.set(key, {
+        ...keyword,
+        count: Math.max(existing?.count || 0, keyword.count || 0),
+      });
+      return map;
+    }, new Map());
+  const topKeywords = [...topKeywordCandidates.values()]
     .filter((k) => k.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, 4);
@@ -82,9 +103,9 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
     onNav('feed', { keyword: k });
   };
 
-  const handleTopKw = (word) => {
-    toast(`${word} — 글 목록으로 이동합니다`);
-    onNav('feed', { keyword: { word } });
+  const handleTopKw = (keyword) => {
+    toast(`${keyword.word} — 글 목록으로 이동합니다`);
+    onNav('feed', { keyword });
   };
 
   const handleCalendarDay = (day) => {
@@ -173,7 +194,7 @@ export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
               <div className="col-h"><h2>가장 많이 쓴 키워드</h2></div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
                 {topKeywords.length ? topKeywords.map((item, i) => (
-                  <div key={item.id || item.word || i} onClick={() => handleTopKw(item.word)} style={{border:'1px solid var(--rule-ghost)', padding:16, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer'}}>
+                  <div key={item.id || item.word || i} onClick={() => handleTopKw(item)} style={{border:'1px solid var(--rule-ghost)', padding:16, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer'}}>
                     <div>
                       <div className="meta" style={{fontSize:9.5}}>{item.eng || 'KEYWORD'}</div>
                       <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:22, letterSpacing:'-0.02em'}}>{item.word}</div>

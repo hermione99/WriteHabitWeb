@@ -730,7 +730,7 @@ const App = () => {
                                   onEditPost={onEditPost} onDeletePost={onDeletePost}
                                   blocks={blocks} follows={follows} onToggleFollow={onToggleFollow}
                                   onBlockAuthor={onBlockAuthor} />}
-      {screen === 'archive' && <ArchiveScreen {...commonProps} keywords={keywordArchive} stats={stats} />}
+      {screen === 'archive' && <ArchiveScreen {...commonProps} keywords={keywordArchive} stats={stats} todayKw={todayKw} />}
       {screen === 'admin'   && <AdminScreen   {...commonProps} user={user} onLogout={onLogout} />}
       {screen === 'settings' && <SettingsScreen {...commonProps} user={user} prefs={prefs}
                                   onUpdatePrefs={onUpdatePrefs} onLogout={onLogout}
