@@ -54,6 +54,19 @@ const postInclude = {
   },
 };
 
+const postCreateInclude = {
+  author: true,
+  keyword: true,
+};
+
+const runAfterResponse = (task) => {
+  Promise.resolve()
+    .then(task)
+    .catch((error) => {
+      console.error('Background task failed:', error);
+    });
+};
+
 export const postsRouter = Router();
 
 postsRouter.get('/posts/drafts', authenticate, async (req, res, next) => {
@@ -66,7 +79,7 @@ postsRouter.get('/posts/drafts', authenticate, async (req, res, next) => {
       orderBy: {
         updatedAt: 'desc',
       },
-      include: postInclude,
+      include: postCreateInclude,
     });
 
     res.json({
@@ -88,7 +101,7 @@ postsRouter.post('/posts/drafts', authenticate, async (req, res, next) => {
         keywordId: body.keywordId || null,
         status: 'DRAFT',
       },
-      include: postInclude,
+      include: postCreateInclude,
     });
 
     res.status(201).json({
@@ -126,7 +139,7 @@ postsRouter.patch('/posts/drafts/:id', authenticate, async (req, res, next) => {
         ...(body.body !== undefined ? { body: body.body } : {}),
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
       },
-      include: postInclude,
+      include: postCreateInclude,
     });
 
     res.json({
@@ -171,7 +184,7 @@ postsRouter.post('/posts/drafts/:id/publish', authenticate, async (req, res, nex
         keywordId: body.keywordId !== undefined ? body.keywordId || null : existing.keywordId,
         status: 'PUBLISHED',
       },
-      include: postInclude,
+      include: postCreateInclude,
     });
 
     res.json({
@@ -280,7 +293,7 @@ postsRouter.post('/posts', authenticate, async (req, res, next) => {
         authorId: req.user.id,
         keywordId: body.keywordId || null,
       },
-      include: postInclude,
+      include: postCreateInclude,
     });
 
     res.status(201).json({
@@ -361,6 +374,12 @@ postsRouter.delete('/posts/:id', authenticate, async (req, res, next) => {
 const findPublishedPost = async (id) => {
   const post = await prisma.post.findUnique({
     where: { id },
+    select: {
+      id: true,
+      authorId: true,
+      title: true,
+      status: true,
+    },
   });
   return post?.status === 'PUBLISHED' ? post : null;
 };
@@ -561,27 +580,29 @@ postsRouter.post('/posts/:id/comments', authenticate, async (req, res, next) => 
     });
 
     if (existing.authorId !== req.user.id) {
-      await createNotification({
-        userId: existing.authorId,
-        type: 'comment',
-        title: `${req.user.displayName}님이 댓글을 남겼습니다.`,
-        body: body.body,
-        data: {
-          preview: body.body,
-          actor: {
-            id: req.user.id,
-            name: req.user.displayName,
-            handle: req.user.handle,
-            initial: req.user.displayName?.[0] || '?',
-            avatarUrl: req.user.avatarUrl || null,
+      runAfterResponse(() =>
+        createNotification({
+          userId: existing.authorId,
+          type: 'comment',
+          title: `${req.user.displayName}님이 댓글을 남겼습니다.`,
+          body: body.body,
+          data: {
+            preview: body.body,
+            actor: {
+              id: req.user.id,
+              name: req.user.displayName,
+              handle: req.user.handle,
+              initial: req.user.displayName?.[0] || '?',
+              avatarUrl: req.user.avatarUrl || null,
+            },
+            target: {
+              type: 'post',
+              id: existing.id,
+              title: existing.title,
+            },
           },
-          target: {
-            type: 'post',
-            id: existing.id,
-            title: existing.title,
-          },
-        },
-      });
+        })
+      );
     }
 
     res.status(201).json({

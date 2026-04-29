@@ -231,6 +231,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   };
 
   const [confirming, setConfirming] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   /* Keyboard shortcuts: ⌘/Ctrl+Enter → publish, Esc → close modals/discard */
   const handlePublishRef = useRef(null);
@@ -250,6 +251,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   }, [confirming, visMenuOpen]);
 
   const handlePublish = () => {
+    if (publishing) return;
     const body = editorRef.current?.innerText?.trim() || '';
     if (!title.trim() && !body) { toast('제목과 내용을 입력해주세요.', 'error'); return; }
     if (!title.trim())           { toast('제목을 입력해주세요.', 'error'); return; }
@@ -258,8 +260,10 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   };
 
   const confirmPublish = async () => {
+    if (publishing) return;
     const body = editorRef.current?.innerText?.trim() || '';
     setConfirming(false);
+    setPublishing(true);
     try {
       if (isEditing) {
         const updatedPost = await onUpdatePost(editingPost.id, { title, body });
@@ -276,6 +280,8 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       }
     } catch {
       setConfirming(false);
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -408,8 +414,8 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
               )}
             </div>
           )}
-          <button className="btn sm accent" onClick={handlePublish} title="⌘+Enter">
-            {isEditing ? '수정 완료' : '발행하기'} <span className="arr">→</span>
+          <button className="btn sm accent" onClick={handlePublish} disabled={publishing} title="⌘+Enter">
+            {publishing ? (isEditing ? '수정 중…' : '발행 중…') : (isEditing ? '수정 완료' : '발행하기')} <span className="arr">→</span>
           </button>
         </div>
       }/>
@@ -616,7 +622,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       {/* Publish confirmation modal */}
       {confirming && (
         <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.35)', zIndex:300, display:'flex', alignItems:'center', justifyContent:'center'}}
-          onClick={() => setConfirming(false)}>
+          onClick={() => !publishing && setConfirming(false)}>
           <div style={{background:'var(--card)', border:'1px solid var(--rule-soft)', borderRadius:4, padding:36, maxWidth:380, width:'90%', boxShadow:'0 16px 48px rgba(0,0,0,0.12)'}}
             onClick={e => e.stopPropagation()}>
             <div className="eyebrow" style={{marginBottom:12}}>{isEditing ? '수정 확인' : '발행 확인'}</div>
@@ -629,9 +635,9 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
             <div style={{display:'flex', gap:10, justifyContent:'space-between', alignItems:'center'}}>
               <span className="meta" style={{fontSize:10}}>⌘+Enter · 발행 · Esc · 취소</span>
               <span style={{display:'flex', gap:10}}>
-                <button className="btn sm ghost" onClick={() => setConfirming(false)}>취소</button>
-                <button className="btn sm accent" onClick={confirmPublish} title="⌘+Enter">
-                  {isEditing ? '수정 완료' : '발행하기'} <span className="arr">→</span>
+                <button className="btn sm ghost" onClick={() => setConfirming(false)} disabled={publishing}>취소</button>
+                <button className="btn sm accent" onClick={confirmPublish} disabled={publishing} title="⌘+Enter">
+                  {publishing ? (isEditing ? '수정 중…' : '발행 중…') : (isEditing ? '수정 완료' : '발행하기')} <span className="arr">→</span>
                 </button>
               </span>
             </div>

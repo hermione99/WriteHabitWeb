@@ -46,6 +46,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
   const [bmCount,   setBmCount]   = useState(p.bookmarks);
 
   const [commentText, setCommentText] = useState('');
+  const [commenting, setCommenting] = useState(false);
   const [commentsSource, setCommentsSource] = useState('local');
   const [comments, setComments] = useState(() => {
     const all = readJSON('wh_comments', {});
@@ -103,28 +104,51 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
   };
 
   const handleComment = async () => {
-    if (!commentText.trim()) return;
+    if (commenting || !commentText.trim()) return;
     const body = commentText.trim();
     const token = readString('wh_auth_token');
+    const tempId = `temp-${Date.now()}`;
+    const optimisticComment = {
+      id: tempId,
+      postId: p.id,
+      authorId: user?.id,
+      n: user?.nickname || '김민지',
+      i: user?.nickname?.[0] || '민',
+      handle: user?.handle,
+      avatarUrl: user?.avatarUrl || null,
+      t: '방금',
+      body,
+      cl: 0,
+      liked: false,
+      replyOpen: false,
+      replyText: '',
+      pending: true,
+    };
+    setCommenting(true);
+    setCommentText('');
 
     if (token && typeof p.id === 'string') {
+      setComments(c => [optimisticComment, ...c]);
+      setCommentsSource('server');
       try {
         const { comment } = await createComment({ postId: p.id, body, token });
-        setComments(c => [comment, ...c]);
-        setCommentsSource('server');
-        setCommentText('');
+        setComments(c => c.map(item => item.id === tempId ? comment : item));
+        setCommenting(false);
         return;
       } catch (error) {
+        setComments(c => c.filter(item => item.id !== tempId));
         if (error.status !== 503) {
           toast(error.message || '댓글 등록에 실패했습니다.', 'error');
+          setCommentText(body);
+          setCommenting(false);
           return;
         }
       }
     }
 
-    setComments(c => [{id: Date.now(), n:user?.nickname || '김민지', i:user?.nickname?.[0] || '민', t:'방금', body, cl:0, liked:false, replyOpen:false, replyText:''}, ...c]);
+    setComments(c => [{...optimisticComment, id: Date.now(), pending: false}, ...c]);
     setCommentsSource('local');
-    setCommentText('');
+    setCommenting(false);
   };
 
   const handleDeleteComment = async (comment) => {
@@ -274,10 +298,13 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                   onChange={e => setCommentText(e.target.value)}
                   style={{minHeight:60, resize:'none', padding:'10px 0', background:'transparent', outline:'none', fontFamily:'var(--f-kr)', fontSize:14, color:'var(--ink)', letterSpacing:'-0.005em', width:'100%', border:'none', borderBottom:'1px solid var(--rule-soft)'}}
                   onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); handleComment(); } }}
+                  disabled={commenting}
                 />
                 <div style={{display:'flex', justifyContent:'space-between', marginTop:10}}>
                   <span className="meta">⌘/Ctrl + Enter로 등록</span>
-                  <button className="btn sm solid" onClick={handleComment}>댓글 남기기</button>
+                  <button className="btn sm solid" onClick={handleComment} disabled={commenting || !commentText.trim()}>
+                    {commenting ? '등록 중…' : '댓글 남기기'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -289,7 +316,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                   <div>
                     <div className="c-head">
                       <span className="c-author">{c.n}</span>
-                      <span className="c-time">{c.t}</span>
+                      <span className="c-time">{c.pending ? '등록 중…' : c.t}</span>
                     </div>
                     <div className="c-body">{c.body}</div>
                     <div className="c-actions">
