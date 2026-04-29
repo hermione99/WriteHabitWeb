@@ -226,6 +226,26 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
       {/* RIGHT — form */}
       <main className="login-right">
         <div style={{maxWidth:380}}>
+          <section className="login-mobile-keyword">
+            <div className="eyebrow">오늘의 키워드 · {todayKw.dateStr} · NO. {todayKw.no}</div>
+            <div className="login-mobile-keyword-word">
+              {todayKw.word}
+              <span>{todayKw.eng}</span>
+            </div>
+            <p>{todayKw.sub || '하루에 한 번, 하나의 키워드에 당신의 문장을 남겨보세요.'}</p>
+            <div className="login-mobile-stats">
+              {[
+                [stats?.serviceDays ?? todayKw.no.replace(/^0+/,''), '일째'],
+                [(stats?.users ?? 0).toLocaleString(), '명의 작가'],
+                [(stats?.posts ?? 0).toLocaleString(), '편의 글'],
+              ].map(([n,l]) => (
+                <div key={l}>
+                  <strong>{n}</strong>
+                  <span>{l}</span>
+                </div>
+              ))}
+            </div>
+          </section>
 
           {/* ── RESET PASSWORD MODE ── */}
           {mode === 'reset' || mode === 'resetConfirm' ? (<>
