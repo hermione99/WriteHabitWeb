@@ -21,6 +21,9 @@ Required environment variables:
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/writehabit?sslmode=require"
 JWT_SECRET="replace-with-a-long-random-production-secret"
 CORS_ORIGIN="https://writehabit.example.com"
+FRONTEND_ORIGIN="https://writehabit.example.com"
+RESEND_API_KEY="re_xxx"
+PASSWORD_RESET_FROM="WriteHabit <noreply@writehabit.example.com>"
 PORT=4000
 JWT_EXPIRES_IN="7d"
 ```

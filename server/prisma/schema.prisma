@@ -49,10 +49,23 @@ model User {
   bookmarks      Bookmark[]
   reports        Report[]       @relation("Reporter")
   notifications  Notification[]
+  passwordResets PasswordResetToken[]
   following      Follow[]       @relation("Follower")
   followers      Follow[]       @relation("Following")
   blocking       Block[]        @relation("Blocker")
   blockedBy      Block[]        @relation("Blocked")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
 }
 
 model Post {

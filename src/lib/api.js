@@ -69,6 +69,18 @@ export const login = ({ email, password }) =>
     body: JSON.stringify({ email, password }),
   });
 
+export const requestPasswordReset = ({ email }) =>
+  request('/auth/password-reset/request', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+
+export const confirmPasswordReset = ({ token, password }) =>
+  request('/auth/password-reset/confirm', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
+
 export const getMe = (token) =>
   request('/auth/me', {
     headers: {
@@ -236,6 +248,14 @@ export const updateMyProfile = ({ displayName, handle, bio, avatarUrl, token }) 
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ displayName, handle, bio, avatarUrl }),
+  });
+
+export const deleteMyAccount = (token) =>
+  request('/users/me', {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
   });
 
 export const getPublicProfile = (handle) => request(`/users/${encodeURIComponent(handle)}`);

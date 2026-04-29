@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { authenticate } from '../middleware/authenticate.js';
 import { badRequest, conflict } from '../lib/httpError.js';
 import { isReservedHandle, normalizeHandle } from '../lib/handles.js';
+import { addUtcDays, startOfKstTodayAsUtcDate } from '../lib/kstDate.js';
 import { prisma } from '../lib/prisma.js';
 import { toPublicPost } from '../lib/postDto.js';
 import { toPublicUser } from '../lib/userDto.js';
@@ -30,6 +31,7 @@ const parseBody = (schema, body) => {
 
 const postInclude = {
   author: true,
+  keyword: true,
   likes: {
     select: {
       userId: true,
@@ -49,13 +51,180 @@ const postInclude = {
   },
 };
 
-const toPublicProfile = (user, viewer = null) => ({
+const formatProfileUser = (user) => ({
+  id: user.id,
+  name: user.displayName,
+  handle: user.handle,
+  bio: user.bio || '',
+  avatarUrl: user.avatarUrl || null,
+  initial: user.displayName?.[0] || '?',
+});
+
+const kstDayKey = (date) => Math.floor(startOfKstTodayAsUtcDate(date).getTime() / 86400000);
+
+const buildStreak = (posts, today = new Date()) => {
+  const activeDays = new Set(posts.map((post) => kstDayKey(post.createdAt)));
+  const todayKey = kstDayKey(today);
+  let current = 0;
+  while (activeDays.has(todayKey - current)) current += 1;
+
+  const activity = {
+    30: Array.from({ length: 30 }, (_, index) => activeDays.has(todayKey - 29 + index)),
+    90: Array.from({ length: 90 }, (_, index) => activeDays.has(todayKey - 89 + index)),
+    365: Array.from({ length: 365 }, (_, index) => activeDays.has(todayKey - 364 + index)),
+  };
+
+  return {
+    current,
+    completedToday: activeDays.has(todayKey),
+    activity,
+  };
+};
+
+const makeStreakLabels = (period, today = new Date()) => {
+  const count = Number(period);
+  const start = addUtcDays(startOfKstTodayAsUtcDate(today), -(count - 1));
+  const points = [0, 0.17, 0.34, 0.51, 0.68, 0.85, 1].map((ratio) =>
+    addUtcDays(start, Math.min(count - 1, Math.round((count - 1) * ratio))),
+  );
+
+  return points.map((date, index) => {
+    if (index === points.length - 1) return '오늘';
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${month}·${day}`;
+  });
+};
+
+const makeProfileDetails = async (user, viewer = null, { includePrivate = false } = {}) => {
+  const [
+    publishedPostsCount,
+    postBodies,
+    receivedLikes,
+    followers,
+    following,
+    likedPosts,
+    bookmarkedPosts,
+    streakPosts,
+  ] = await Promise.all([
+    prisma.post.count({
+      where: {
+        authorId: user.id,
+        status: 'PUBLISHED',
+      },
+    }),
+    prisma.post.findMany({
+      where: {
+        authorId: user.id,
+        status: 'PUBLISHED',
+      },
+      select: {
+        body: true,
+      },
+    }),
+    prisma.like.count({
+      where: {
+        post: {
+          authorId: user.id,
+          status: 'PUBLISHED',
+        },
+      },
+    }),
+    prisma.follow.findMany({
+      where: {
+        followingId: user.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 48,
+      include: {
+        follower: true,
+      },
+    }),
+    prisma.follow.findMany({
+      where: {
+        followerId: user.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 48,
+      include: {
+        following: true,
+      },
+    }),
+    includePrivate
+      ? prisma.post.findMany({
+          where: {
+            status: 'PUBLISHED',
+            likes: {
+              some: {
+                userId: user.id,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 24,
+          include: postInclude,
+        })
+      : Promise.resolve([]),
+    includePrivate
+      ? prisma.post.findMany({
+          where: {
+            status: 'PUBLISHED',
+            bookmarks: {
+              some: {
+                userId: user.id,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 24,
+          include: postInclude,
+        })
+      : Promise.resolve([]),
+    prisma.post.findMany({
+      where: {
+        authorId: user.id,
+        status: 'PUBLISHED',
+      },
+      select: {
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  const characterCount = postBodies.reduce((sum, post) => sum + (post.body || '').length, 0);
+
+  return {
+    stats: {
+      posts: publishedPostsCount,
+      characters: characterCount,
+      receivedLikes,
+      followers: followers.length,
+      following: following.length,
+      streak: buildStreak(streakPosts),
+      streakLabels: {
+        30: makeStreakLabels(30),
+        90: makeStreakLabels(90),
+        365: makeStreakLabels(365),
+      },
+    },
+    followers: followers.map((item) => formatProfileUser(item.follower)),
+    following: following.map((item) => formatProfileUser(item.following)),
+    likedPosts: likedPosts.map((post) => toPublicPost(post, viewer)),
+    bookmarkedPosts: bookmarkedPosts.map((post) => toPublicPost(post, viewer)),
+  };
+};
+
+const toPublicProfile = async (user, viewer = null, options = {}) => ({
   ...toPublicUser(user),
-  stats: {
-    posts: user._count?.posts || 0,
-    followers: user._count?.followers || 0,
-    following: user._count?.following || 0,
-  },
+  ...(await makeProfileDetails(user, viewer, options)),
   posts: user.posts?.map((post) => toPublicPost(post, viewer)) || [],
 });
 
@@ -78,18 +247,11 @@ usersRouter.get('/users/me', authenticate, async (req, res, next) => {
           take: 24,
           include: postInclude,
         },
-        _count: {
-          select: {
-            posts: true,
-            followers: true,
-            following: true,
-          },
-        },
       },
     });
 
     res.json({
-      profile: toPublicProfile(user, user),
+      profile: await toPublicProfile(user, user, { includePrivate: true }),
     });
   } catch (error) {
     next(error);
@@ -140,6 +302,22 @@ usersRouter.patch('/users/me', authenticate, async (req, res, next) => {
   }
 });
 
+usersRouter.delete('/users/me', authenticate, async (req, res, next) => {
+  try {
+    await prisma.user.delete({
+      where: {
+        id: req.user.id,
+      },
+    });
+
+    res.json({
+      ok: true,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 usersRouter.get('/users/:handle', async (req, res, next) => {
   try {
     const handle = req.params.handle.toLowerCase();
@@ -158,13 +336,6 @@ usersRouter.get('/users/:handle', async (req, res, next) => {
           take: 24,
           include: postInclude,
         },
-        _count: {
-          select: {
-            posts: true,
-            followers: true,
-            following: true,
-          },
-        },
       },
     });
 
@@ -174,7 +345,7 @@ usersRouter.get('/users/:handle', async (req, res, next) => {
     }
 
     res.json({
-      profile: toPublicProfile(user),
+      profile: await toPublicProfile(user),
     });
   } catch (error) {
     next(error);

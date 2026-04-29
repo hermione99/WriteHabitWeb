@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Logo } from '../components/Logo.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { API_ORIGIN, checkHandleAvailability, login, register } from '../lib/api.js';
+import { API_ORIGIN, checkHandleAvailability, confirmPasswordReset, login, register, requestPasswordReset } from '../lib/api.js';
+import { CONTACT_MAILTO } from '../lib/contact.js';
 import { checkHandleAvailable as checkLocalHandleAvailable, sanitizeHandle } from '../lib/handles.js';
-
-const DEMO_EMAIL    = 'minji@writehabit.kr';
-const DEMO_PASSWORD = 'writehabit';
 
 /* Defined outside LoginScreen so React never remounts it on re-render */
 const LoginField = ({id, label, type='text', value, onChange, placeholder, err, autoComplete, onClearError}) => (
@@ -25,7 +23,7 @@ const LoginField = ({id, label, type='text', value, onChange, placeholder, err, 
 export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
   const toast = useToast();
 
-  /* mode: 'login' | 'signup' | 'reset' */
+  /* mode: 'login' | 'signup' | 'reset' | 'resetConfirm' */
   const [mode, setMode]           = useState('login');
 
   /* fields */
@@ -34,7 +32,10 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
   const [pass, setPass]           = useState('');
   const [passConfirm, setPassCfm] = useState('');
   const [resetEmail, setResetEmail] = useState('');
-  const [resetSent, setResetSent] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [resetDevUrl, setResetDevUrl] = useState('');
+  const [resetRequested, setResetRequested] = useState(false);
+  const [resetNotice, setResetNotice] = useState('');
 
   /* checkbox */
   const [remember, setRemember]   = useState(true);
@@ -45,6 +46,17 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
 
   /* clear errors on mode switch */
   const switchMode = (m) => { setMode(m); setErrors({}); setPass(''); setPassCfm(''); };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('resetToken');
+    if (!token) return;
+    setResetToken(token);
+    setMode('resetConfirm');
+    setPass('');
+    setPassCfm('');
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   /* nickname → URL handle (한글 보존, 공백·특수문자만 제거) */
   const handlePreview = sanitizeHandle(nickname);
@@ -131,8 +143,7 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
     }
   };
 
-  /* ── reset password submit ── */
-  const handleReset = (e) => {
+  const handleReset = async (e) => {
     e.preventDefault();
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!resetEmail || !emailRe.test(resetEmail)) {
@@ -140,12 +151,43 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
       return;
     }
     setLoading(true);
-    setTimeout(() => { setLoading(false); setResetSent(true); }, 800);
+    setResetDevUrl('');
+    setResetNotice('');
+    try {
+      const result = await requestPasswordReset({ email: resetEmail });
+      setResetRequested(true);
+      if (result.resetUrl) setResetDevUrl(result.resetUrl);
+      setResetNotice(result.emailSent
+        ? '계정이 존재하면 재설정 링크를 이메일로 보냈습니다. 링크는 30분 동안 유효합니다.'
+        : '메일 발송 설정이 아직 완료되지 않았습니다. 문의/피드백으로 비밀번호 재설정을 요청해주세요.'
+      );
+      toast(result.emailSent ? '재설정 링크를 이메일로 보냈습니다.' : '메일 발송 설정을 확인해주세요.', result.emailSent ? 'info' : 'error');
+    } catch (error) {
+      setErrors({ resetEmail: error.message || '재설정 요청에 실패했습니다.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* ── social stub ── */
-  const handleSocial = (provider) => {
-    toast(`${provider} 로그인은 준비 중입니다.`, 'info');
+  const handleResetConfirm = async (e) => {
+    e.preventDefault();
+    const errs = {};
+    if (!resetToken) errs.form = '재설정 토큰이 없습니다. 이메일 링크를 다시 열어주세요.';
+    if (!pass || pass.length < 8) errs.pass = '비밀번호는 8자 이상이어야 합니다.';
+    if (!passConfirm) errs.passConfirm = '비밀번호를 한 번 더 입력해주세요.';
+    else if (pass !== passConfirm) errs.passConfirm = '비밀번호가 일치하지 않습니다.';
+    if (Object.keys(errs).length) { setErrors(errs); return; }
+
+    setLoading(true);
+    try {
+      const auth = await confirmPasswordReset({ token: resetToken, password: pass });
+      onLogin(auth, true);
+      toast('비밀번호가 변경되었습니다.');
+    } catch (error) {
+      setErrors({ form: error.status === 400 ? '재설정 링크가 만료되었거나 올바르지 않습니다.' : error.message || '비밀번호 변경에 실패했습니다.' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const clearErr = (id) => setErrors(prev => ({...prev, [id]: undefined, form: undefined}));
@@ -175,7 +217,10 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
             ))}
           </div>
         </div>
-        <div className="meta" style={{fontSize:10.5}}>© 2026 WriteHabit · v1.0.2</div>
+        <div className="meta" style={{fontSize:10.5, lineHeight:1.6}}>
+          © 2026 WriteHabit · Beta<br/>
+          베타 기간에는 기능과 데이터 구조가 조정될 수 있습니다.
+        </div>
       </aside>
 
       {/* RIGHT — form */}
@@ -183,40 +228,73 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
         <div style={{maxWidth:380}}>
 
           {/* ── RESET PASSWORD MODE ── */}
-          {mode === 'reset' ? (<>
-            <button onClick={() => { setMode('login'); setErrors({}); setResetSent(false); setResetEmail(''); }}
+          {mode === 'reset' || mode === 'resetConfirm' ? (<>
+            <button onClick={() => { setMode('login'); setErrors({}); setResetEmail(''); setResetToken(''); setResetRequested(false); setResetDevUrl(''); setResetNotice(''); }}
               style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:11, color:'var(--ink-mute)', marginBottom:24, padding:0, display:'flex', alignItems:'center', gap:6}}>
               ← 로그인으로 돌아가기
             </button>
             <div className="eyebrow" style={{marginBottom:12}}>RESET · 비밀번호 찾기</div>
             <h2 style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:36, letterSpacing:'-0.025em', lineHeight:1.1, margin:'0 0 10px', color:'var(--ink)'}}>
-              비밀번호를<br/>재설정합니다.
+              {mode === 'resetConfirm' ? <>새 비밀번호를<br/>설정합니다.</> : <>비밀번호를<br/>재설정합니다.</>}
             </h2>
             <p style={{color:'var(--ink-mute)', fontSize:14, margin:'0 0 32px', lineHeight:1.65}}>
-              가입 시 사용한 이메일을 입력하면<br/>재설정 링크를 보내드립니다.
+              {mode === 'resetConfirm' ? '새 비밀번호는 8자 이상으로 입력해주세요.' : <>가입 시 사용한 이메일을 입력하면<br/>재설정 링크를 보내드립니다.</>}
             </p>
 
-            {resetSent ? (
-              <div className="reset-panel">
-                <div style={{fontFamily:'var(--f-kr-serif)', fontSize:18, fontWeight:700, marginBottom:8, color:'var(--ink)'}}>이메일을 보냈습니다 ✓</div>
-                <div style={{fontSize:13, color:'var(--ink-mute)', lineHeight:1.65}}>
-                  <strong style={{color:'var(--ink)'}}>{resetEmail}</strong>으로<br/>
-                  재설정 링크가 발송되었습니다.<br/>
-                  메일함을 확인해주세요.
-                </div>
-              </div>
-            ) : (
-              <form onSubmit={handleReset}>
-                <LoginField id="resetEmail" label="01 · EMAIL" type="email"
-                  value={resetEmail} onChange={e=>setResetEmail(e.target.value)}
-                  placeholder="가입 시 사용한 이메일" err={errors.resetEmail}
-                  onClearError={() => clearErr('resetEmail')} />
-                <div style={{marginBottom:20}} />
+            {mode === 'resetConfirm' ? (
+              <form onSubmit={handleResetConfirm}>
+                {errors.form && (
+                  <div style={{background:'rgba(192,57,43,0.08)', border:'1px solid rgba(192,57,43,0.3)', padding:'10px 14px', marginBottom:20, borderRadius:2}}>
+                    <span style={{fontFamily:'var(--f-kr)', fontSize:13, color:'#c0392b'}}>{errors.form}</span>
+                  </div>
+                )}
+                <LoginField id="resetPass" label="01 · 새 비밀번호" type="password"
+                  value={pass} onChange={e=>setPass(e.target.value)}
+                  placeholder="8자 이상" err={errors.pass}
+                  autoComplete="new-password"
+                  onClearError={() => clearErr('pass')} />
+                <LoginField id="resetPassConfirm" label="02 · 새 비밀번호 확인" type="password"
+                  value={passConfirm} onChange={e=>setPassCfm(e.target.value)}
+                  placeholder="비밀번호 재입력" err={errors.passConfirm}
+                  autoComplete="new-password"
+                  onClearError={() => clearErr('passConfirm')} />
                 <button type="submit" className="btn solid" disabled={loading}
                   style={{width:'100%', justifyContent:'center', padding:'14px 20px', fontSize:13, opacity: loading ? 0.7 : 1}}>
-                  {loading ? <span className="spinner"/> : <>링크 전송 <span className="arr">→</span></>}
+                  {loading ? <><span className="spinner"/> &nbsp;변경 중…</> : <>비밀번호 변경 <span className="arr">→</span></>}
                 </button>
               </form>
+            ) : (
+              <>
+                {resetRequested && (
+                  <div className="reset-panel" style={{marginBottom:20}}>
+                    <div style={{fontFamily:'var(--f-kr-serif)', fontSize:18, fontWeight:700, marginBottom:8, color:'var(--ink)'}}>요청을 접수했습니다</div>
+                    <div style={{fontSize:13, color:'var(--ink-mute)', lineHeight:1.65}}>
+                      {resetNotice}
+                    </div>
+                    {!resetDevUrl && resetNotice.includes('문의') && (
+                      <a className="btn sm ghost" href={CONTACT_MAILTO} style={{display:'inline-flex', marginTop:12, textDecoration:'none'}}>
+                        문의/피드백 보내기
+                      </a>
+                    )}
+                    {resetDevUrl && (
+                      <button className="btn sm ghost" style={{marginTop:12}} onClick={() => window.location.assign(resetDevUrl)}>
+                        개발용 재설정 링크 열기
+                      </button>
+                    )}
+                  </div>
+                )}
+                <form onSubmit={handleReset}>
+                  <LoginField id="resetEmail" label="01 · EMAIL" type="email"
+                    value={resetEmail} onChange={e=>setResetEmail(e.target.value)}
+                    placeholder="가입 시 사용한 이메일" err={errors.resetEmail}
+                    onClearError={() => clearErr('resetEmail')} />
+                  <div style={{marginBottom:20}} />
+                  <button type="submit" className="btn solid" disabled={loading}
+                    style={{width:'100%', justifyContent:'center', padding:'14px 20px', fontSize:13, opacity: loading ? 0.7 : 1}}>
+                    {loading ? <><span className="spinner"/> &nbsp;전송 중…</> : <>링크 전송 <span className="arr">→</span></>}
+                  </button>
+                </form>
+              </>
             )}
           </>) : (<>
 
@@ -316,15 +394,6 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
               )}
             </form>
 
-            <div style={{display:'flex', alignItems:'center', gap:12, margin:'24px 0', color:'var(--ink-faint)', fontFamily:'var(--f-mono)', fontSize:10.5}}>
-              <span style={{flex:1, height:1, background:'var(--rule-soft)'}}/>
-              <span>OR</span>
-              <span style={{flex:1, height:1, background:'var(--rule-soft)'}}/>
-            </div>
-            <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10}}>
-              <button className="btn" style={{justifyContent:'center'}} onClick={() => handleSocial('Google')}>Google</button>
-              <button className="btn" style={{justifyContent:'center'}} onClick={() => handleSocial('Apple')}>Apple</button>
-            </div>
             <p style={{marginTop:28, fontSize:12.5, color:'var(--ink-mute)', textAlign:'center'}}>
               {mode==='signup' ? '이미 계정이 있으신가요? ' : '아직 계정이 없으신가요? '}
               <button onClick={() => switchMode(mode==='signup'?'login':'signup')}

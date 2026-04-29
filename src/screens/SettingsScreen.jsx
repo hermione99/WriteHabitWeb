@@ -32,6 +32,18 @@ export const SettingsScreen = ({onNav, user, prefs, onUpdatePrefs, dark, onToggl
   const toast = useToast();
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmText, setConfirmText]     = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (confirmText !== '삭제' || deleting) return;
+    setDeleting(true);
+    try {
+      await onDeleteAccount();
+      setConfirmDelete(false);
+    } catch {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div>
@@ -143,10 +155,10 @@ export const SettingsScreen = ({onNav, user, prefs, onUpdatePrefs, dark, onToggl
             </div>
             <div style={{display:'flex', justifyContent:'flex-end', gap:10}}>
               <button className="btn ghost" onClick={() => setConfirmDelete(false)}>취소</button>
-              <button className="btn solid" disabled={confirmText !== '삭제'}
-                onClick={() => { onDeleteAccount(); setConfirmDelete(false); }}
+              <button className="btn solid" disabled={confirmText !== '삭제' || deleting}
+                onClick={handleDelete}
                 style={{background: confirmText==='삭제' ? 'var(--accent)' : 'var(--paper-3)', borderColor:'transparent', cursor: confirmText==='삭제'?'pointer':'not-allowed'}}>
-                영구 삭제 →
+                {deleting ? '삭제 중…' : '영구 삭제 →'}
               </button>
             </div>
           </div>

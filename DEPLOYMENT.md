@@ -49,6 +49,9 @@ DATABASE_URL=postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require
 JWT_SECRET=<long random secret>
 JWT_EXPIRES_IN=7d
 CORS_ORIGIN=https://<your-vercel-domain>
+FRONTEND_ORIGIN=https://<your-vercel-domain>
+RESEND_API_KEY=<resend api key>
+PASSWORD_RESET_FROM=WriteHabit <noreply@your-domain>
 ```
 
 After the first deploy, run migrations against the production database:

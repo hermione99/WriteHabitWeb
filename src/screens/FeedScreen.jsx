@@ -13,6 +13,27 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
   const filters = ['최신','인기','팔로잉','짧은 글','긴 글'];
   const blockedCount = blocks?.size || 0;
   const lastSentQuery = useRef('');
+  const [deadlineLabel, setDeadlineLabel] = useState('계산 중');
+
+  useEffect(() => {
+    const updateDeadline = () => {
+      const now = new Date();
+      const end = new Date(now);
+      end.setHours(24, 0, 0, 0);
+      const diffMin = Math.max(0, Math.floor((end.getTime() - now.getTime()) / 60000));
+      if (diffMin <= 0) {
+        setDeadlineLabel('마감');
+        return;
+      }
+      const hours = Math.floor(diffMin / 60);
+      const minutes = diffMin % 60;
+      setDeadlineLabel(`${hours}H ${String(minutes).padStart(2, '0')}M`);
+    };
+    updateDeadline();
+    const id = setInterval(updateDeadline, 60000);
+    return () => clearInterval(id);
+  }, []);
+
   useEffect(() => {
     if (!onSearch) return;
     const trimmed = query.trim();
@@ -93,7 +114,7 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
           <div className="kw-side">
             <span className="label" style={{marginBottom:4}}>오늘 작성된 글</span>
             <span className="big">{(stats?.todayPosts ?? posts.filter(p => p.keywordId === todayKw.id || p.keyword?.id === todayKw.id).length).toLocaleString()}</span>
-            <span className="meta">마감까지 · 14H 32M</span>
+            <span className="meta">마감까지 · {deadlineLabel}</span>
             <button className="btn accent sm" style={{marginTop:10, alignSelf:'flex-end'}} onClick={() => onNav('write')}>
               오늘의 글 쓰기 <span className="arr">→</span>
             </button>

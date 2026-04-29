@@ -12,10 +12,12 @@ import { ArchiveScreen } from './screens/ArchiveScreen.jsx';
 import { LoginScreen } from './screens/LoginScreen.jsx';
 import { SettingsScreen } from './screens/SettingsScreen.jsx';
 import { AdminScreen } from './screens/AdminScreen.jsx';
-import { blockUser, bookmarkPost, createDraft, createPost, createReport, deleteDraft, deletePost, followUser, getMe, getMySocialState, getStats, getTodayKeyword, likePost, listDrafts, listKeywordArchive, listNotifications, listPosts, markAllNotificationsRead, markNotificationRead, publishDraft, unblockUser, unbookmarkPost, unfollowUser, unlikePost, updateDraft, updateMyProfile, updatePost } from './lib/api.js';
+import { LegalScreen } from './screens/LegalScreen.jsx';
+import { blockUser, bookmarkPost, createDraft, createPost, createReport, deleteDraft, deleteMyAccount, deletePost, followUser, getMe, getMySocialState, getStats, getTodayKeyword, likePost, listDrafts, listKeywordArchive, listNotifications, listPosts, markAllNotificationsRead, markNotificationRead, publishDraft, unblockUser, unbookmarkPost, unfollowUser, unlikePost, updateDraft, updateMyProfile, updatePost } from './lib/api.js';
 import { sanitizeHandle } from './lib/handles.js';
+import { CONTACT_MAILTO } from './lib/contact.js';
 import { readJSON, readReports, readSet, readString, removeStorageKeys, writeJSON, writeReports, writeSet, writeString } from './lib/storage.js';
-import { ACCOUNT_STORAGE_KEYS, DEFAULT_PREFS, DEMO_EMAIL, KEYWORD_POOL, KEYWORDS_ARCHIVE, SCHEDULED, STATUS_META, TODAY_KW } from './data/writehabitData.js';
+import { ACCOUNT_STORAGE_KEYS, DEFAULT_PREFS, KEYWORDS_ARCHIVE, TODAY_KW } from './data/writehabitData.js';
 import './styles.css';
 
 /* ══════════════════════════════
@@ -46,7 +48,7 @@ const App = () => {
     const profile = readJSON('wh_profile', {});
     return {
       nickname: profile.nickname || '김민지',
-      email:    profile.email    || DEMO_EMAIL,
+      email:    profile.email    || '',
       bio:      profile.bio      || '매일 한 줄, 주로 저녁에. 조용한 것들에 대해 씁니다.',
     };
   });
@@ -202,8 +204,7 @@ const App = () => {
   useEffect(() => { writeJSON('wh_prefs', prefs); }, [prefs]);
   const onUpdatePrefs = (patch) => setPrefs(p => ({...p, ...patch}));
 
-  const onDeleteAccount = () => {
-    /* clear EVERYTHING */
+  const clearLocalAccountState = () => {
     removeStorageKeys(ACCOUNT_STORAGE_KEYS);
     setUser(null);
     setPosts([]);
@@ -215,6 +216,19 @@ const App = () => {
     setDrafts([]);
     setOnboarded(false);
     setScreen('login');
+  };
+
+  const onDeleteAccount = async () => {
+    const token = readString('wh_auth_token');
+    if (token) {
+      try {
+        await deleteMyAccount(token);
+      } catch (error) {
+        toast(error.message || '계정 삭제에 실패했습니다.', 'error');
+        throw error;
+      }
+    }
+    clearLocalAccountState();
     toast('계정이 삭제되었습니다.');
   };
 
@@ -716,11 +730,13 @@ const App = () => {
                                   onEditPost={onEditPost} onDeletePost={onDeletePost}
                                   blocks={blocks} follows={follows} onToggleFollow={onToggleFollow}
                                   onBlockAuthor={onBlockAuthor} />}
-      {screen === 'archive' && <ArchiveScreen {...commonProps} keywords={keywordArchive} />}
-      {screen === 'admin'   && <AdminScreen   {...commonProps} user={user} onLogout={onLogout} keywordPool={KEYWORD_POOL} keywordsArchive={keywordArchive} initialSchedule={SCHEDULED} statusMeta={STATUS_META} />}
+      {screen === 'archive' && <ArchiveScreen {...commonProps} keywords={keywordArchive} stats={stats} />}
+      {screen === 'admin'   && <AdminScreen   {...commonProps} user={user} onLogout={onLogout} />}
       {screen === 'settings' && <SettingsScreen {...commonProps} user={user} prefs={prefs}
                                   onUpdatePrefs={onUpdatePrefs} onLogout={onLogout}
                                   onExportData={onExportData} onDeleteAccount={onDeleteAccount} />}
+      {screen === 'terms' && <LegalScreen {...commonProps} type="terms" />}
+      {screen === 'privacy' && <LegalScreen {...commonProps} type="privacy" />}
 
       <footer style={{borderTop:'1px solid var(--rule-ghost)', padding:'24px 56px', display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:40}}>
         <div style={{display:'flex', gap:24, alignItems:'center'}}>
@@ -728,9 +744,12 @@ const App = () => {
           <span className="meta" style={{fontSize:10}}>© 2026 WriteHabit</span>
         </div>
         <div style={{display:'flex', gap:20, fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)'}}>
-          <span style={{cursor:'pointer'}}>이용약관</span>
-          <span style={{cursor:'pointer'}}>개인정보처리방침</span>
-          <button onClick={() => onNav('admin')} style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-faint)'}}>Admin ↗</button>
+          <button onClick={() => onNav('terms')} style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', padding:0}}>이용약관</button>
+          <button onClick={() => onNav('privacy')} style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', padding:0}}>개인정보처리방침</button>
+          <a href={CONTACT_MAILTO} style={{fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', textDecoration:'none'}}>문의/피드백</a>
+          {user?.role === 'ADMIN' && (
+            <button onClick={() => onNav('admin')} style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-faint)'}}>Admin ↗</button>
+          )}
         </div>
       </footer>
     </div>

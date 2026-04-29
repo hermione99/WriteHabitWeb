@@ -20,3 +20,9 @@ services:
         value: 7d
       - key: CORS_ORIGIN
         sync: false
+      - key: FRONTEND_ORIGIN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PASSWORD_RESET_FROM
+        sync: false

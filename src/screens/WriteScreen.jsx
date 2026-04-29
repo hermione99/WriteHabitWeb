@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { IconStar } from '../components/Icons.jsx';
 import { TopBar } from '../components/TopBar.jsx';
 import { useToast } from '../components/Toast.jsx';
 
@@ -561,12 +560,6 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
               </button>
             </div>
 
-            {/* AI */}
-            <div className="toolbar-group">
-              <button className="tbtn" title="AI 글쓰기 도움" onClick={() => toast('AI 글쓰기 도움은 준비 중입니다.')}>
-                <IconStar />
-              </button>
-            </div>
           </div>
 
           <div

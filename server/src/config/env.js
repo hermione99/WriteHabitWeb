@@ -17,6 +17,9 @@ export const env = {
   corsOrigins: parseOrigins(process.env.CORS_ORIGIN),
   jwtSecret: process.env.JWT_SECRET || 'dev-writehabit-secret-change-before-deploy',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  frontendOrigin: process.env.FRONTEND_ORIGIN || parseOrigins(process.env.CORS_ORIGIN)[0] || 'http://127.0.0.1:5173',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  passwordResetFrom: process.env.PASSWORD_RESET_FROM || 'WriteHabit <onboarding@resend.dev>',
 };
 
 if (isProduction) {

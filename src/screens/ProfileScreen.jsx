@@ -1,34 +1,37 @@
 import { useEffect, useRef, useState } from 'react';
 import { checkHandleAvailable, sanitizeHandle } from '../lib/handles.js';
-import { resolveAssetUrl, uploadAvatar } from '../lib/api.js';
+import { getMyProfile, getPublicProfile, resolveAssetUrl, uploadAvatar } from '../lib/api.js';
 import { Avatar } from '../components/Avatar.jsx';
 import { readString } from '../lib/storage.js';
 import { useToast } from '../components/Toast.jsx';
 
 const STREAK_PERIODS = {
-  '30일': { count: 30, labels: ['03·24','03·29','04·03','04·08','04·13','04·18','오늘'] },
-  '90일': { count: 90, labels: ['01·25','02·08','02·22','03·07','03·21','04·04','오늘'] },
-  '1년':  { count: 365, labels: ['25·04','25·07','25·10','26·01','26·02','26·03','오늘'] },
+  '30일': { key: '30' },
+  '90일': { key: '90' },
+  '1년':  { key: '365' },
 };
 
-const makeStreak = (count) => Array.from({length: count}, (_, i) => {
-  if (i === count - 1) return 'today';
-  const r = Math.sin(i * 3.7) + Math.cos(i * 1.3);
-  return r > -0.4 ? 'on' : 'off';
+const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR');
+const formatJoinDate = (date) => {
+  if (!date) return 'WRITER';
+  const joined = new Date(date);
+  if (Number.isNaN(joined.getTime())) return 'WRITER';
+  return `WRITER · SINCE ${joined.getFullYear()}·${String(joined.getMonth() + 1).padStart(2, '0')}`;
+};
+const profileToUserListItem = (profile) => ({
+  name: profile.displayName || profile.author || profile.name || profile.handle,
+  handle: profile.handle,
+  bio: profile.bio || '',
+  avatarUrl: profile.avatarUrl || null,
+  initial: profile.initial || profile.displayName?.[0] || profile.name?.[0] || '?',
 });
-
-const FOLLOWER_USERS = [
-  {name:'이서연', handle:'seoyeon', bio:'시와 소설 사이 어딘가.'},
-  {name:'박준호', handle:'junho', bio:'매일 새벽 네 시에 씁니다.'},
-  {name:'최하은', handle:'haeun', bio:'감정을 단어로 옮기는 연습 중.'},
-  {name:'강도윤', handle:'doyun', bio:'짧고 정확하게.'},
-];
 
 export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateUser, onEditPost, onDeletePost, blocks, follows, onToggleFollow, onBlockAuthor}) => {
   const toast = useToast();
   const isOwnProfile = !viewUser;
   const followed = viewUser ? follows?.has(viewUser.handle) : false;
 
+  const [remoteProfile, setRemoteProfile] = useState(null);
   const [profileTab, setProfileTab] = useState('글');
   const [streakPeriod, setStreakPeriod] = useState('30일');
   const [editing, setEditing] = useState(false);
@@ -41,6 +44,25 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
 
   useEffect(() => { setProfileTab('글'); }, [viewUser?.handle]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const token = readString('wh_auth_token');
+    const load = async () => {
+      try {
+        const result = isOwnProfile && token
+          ? await getMyProfile(token)
+          : viewUser?.handle
+            ? await getPublicProfile(viewUser.handle)
+            : null;
+        if (!cancelled) setRemoteProfile(result?.profile || null);
+      } catch (error) {
+        if (!cancelled) setRemoteProfile(null);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [isOwnProfile, viewUser?.handle, user?.handle, user?.updatedAt]);
+
   const editHandlePreview = sanitizeHandle(editNick);
 
   useEffect(() => {
@@ -52,17 +74,32 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     const id = setTimeout(async () => {
       const knownHandles = [
         ...posts.map(p => p.handle),
-        ...FOLLOWER_USERS.map(u => u.handle),
+        ...(remoteProfile?.followers || []).map(u => u.handle),
+        ...(remoteProfile?.following || []).map(u => u.handle),
       ];
       const r = await checkHandleAvailable(editHandlePreview, user?.handle, knownHandles);
       if (!cancelled) setEditNickStatus(r);
     }, 350);
     return () => { cancelled = true; clearTimeout(id); };
-  }, [editHandlePreview, editing, user?.handle]);
-  const name    = viewUser ? viewUser.author  : (user?.nickname || '김민지');
-  const handle  = viewUser ? viewUser.handle  : (user?.handle || sanitizeHandle(user?.nickname || 'user') || 'user');
-  const bio     = viewUser ? (viewUser.bio || '소개가 없습니다.') : (user?.bio || '매일 한 줄, 주로 저녁에. 조용한 것들에 대해 씁니다.');
-  const initial = viewUser ? viewUser.initial : name[0];
+  }, [editHandlePreview, editing, user?.handle, posts, remoteProfile?.followers, remoteProfile?.following]);
+
+  const profileUser = remoteProfile || (viewUser ? {
+    displayName: viewUser.author,
+    handle: viewUser.handle,
+    bio: viewUser.bio || '',
+    avatarUrl: viewUser.avatarUrl || null,
+    initial: viewUser.initial,
+  } : {
+    displayName: user?.nickname,
+    handle: user?.handle || sanitizeHandle(user?.nickname || 'user') || 'user',
+    bio: user?.bio || '',
+    avatarUrl: user?.avatarUrl || null,
+    initial: user?.nickname?.[0],
+  });
+  const name    = profileUser.displayName || profileUser.name || profileUser.author || '사용자';
+  const handle  = profileUser.handle || 'user';
+  const bio     = profileUser.bio || '소개가 없습니다.';
+  const initial = profileUser.initial || name[0];
 
   const openEdit = () => {
     setEditNick(user?.nickname || '');
@@ -119,16 +156,30 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     return () => window.removeEventListener('keydown', onKey);
   }, [editing]);
 
-  const { count: streakCount, labels: streakLabels } = STREAK_PERIODS[streakPeriod];
-  const streakData = makeStreak(streakCount);
+  const { key: streakKey } = STREAK_PERIODS[streakPeriod];
+  const streakActivity = remoteProfile?.stats?.streak?.activity?.[streakKey] || [];
+  const streakData = streakActivity.map((active, i) => (
+    i === streakActivity.length - 1 && remoteProfile?.stats?.streak?.completedToday ? 'today' : active ? 'on' : 'off'
+  ));
+  const streakLabels = remoteProfile?.stats?.streakLabels?.[streakKey] || [];
 
-  const myPosts      = posts.filter(p => p.handle === handle || p.author === name);
-  const displayPosts = myPosts.length ? myPosts : (isOwnProfile ? posts.slice(0, 4) : []);
-  const savedPosts   = posts.filter(p => p.bookmarked);
-  const likedPosts   = posts.filter(p => p.liked);
+  const myPosts      = remoteProfile?.posts || posts.filter(p => p.handle === handle || p.author === name);
+  const savedPosts   = remoteProfile?.bookmarkedPosts || posts.filter(p => p.bookmarked);
+  const likedPosts   = remoteProfile?.likedPosts || posts.filter(p => p.liked);
+  const followersList = remoteProfile?.followers || [];
+  const followingList = remoteProfile?.following || [];
+  const profileStats = remoteProfile?.stats || {};
+  const statsRows = [
+    ['누적 글', formatNumber(profileStats.posts), '편'],
+    ['총 분량', formatNumber(profileStats.characters), '자'],
+    ['받은 ♥', formatNumber(profileStats.receivedLikes), ''],
+    ['팔로워', formatNumber(profileStats.followers), ''],
+    ['현재 스트릭', formatNumber(profileStats.streak?.current), '일'],
+  ];
 
   const handleShare = () => {
-    const url = `https://writehabit.kr/@${handle}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://write-habit-web.vercel.app';
+    const url = `${origin}/@${handle}`;
     if (navigator.clipboard) navigator.clipboard.writeText(url);
     toast(`프로필 링크가 복사되었습니다 · @${handle}`);
   };
@@ -157,8 +208,8 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
           <article key={p.id} style={{padding:24, borderRight:i%2===0?'1px solid var(--rule-ghost)':'none', borderBottom:'1px solid var(--rule-ghost)', cursor:'pointer', position:'relative'}}
             onClick={() => onNav('detail', p)}>
             <div style={{display:'flex', justifyContent:'space-between', marginBottom:10}}>
-              <span className="meta" style={{fontSize:10.5}}>KW · {['이별','청춘','새벽','후회'][i%4]} · 0{340+i}{p.edited && ' · 수정됨'}</span>
-              <span className="meta" style={{fontSize:10.5}}>{['04·23','04·21','04·16','04·15'][i%4]}</span>
+              <span className="meta" style={{fontSize:10.5}}>KW · {p.keyword?.word || '자유'}{p.edited && ' · 수정됨'}</span>
+              <span className="meta" style={{fontSize:10.5}}>{p.time || ''}</span>
             </div>
             <h3 style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:19, letterSpacing:'-0.02em', lineHeight:1.3, margin:'0 0 10px', color:'var(--ink)'}}>{p.title}</h3>
             <p style={{fontSize:13, color:'var(--ink-mute)', lineHeight:1.65, margin:0, display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical', overflow:'hidden'}}>{p.body}</p>
@@ -185,9 +236,9 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
         <div key={u.handle} style={{padding:'20px 24px', borderRight:i%2===0?'1px solid var(--rule-ghost)':'none', borderBottom:'1px solid var(--rule-ghost)', display:'flex', gap:16, alignItems:'center'}}>
           <Avatar url={u.avatarUrl} initial={u.name[0]} size={44} fontSize={18}
             style={{flexShrink:0, cursor:'pointer'}}
-            onClick={() => onNav('profile', { handle:u.handle, author:u.name, initial:u.name[0], avatarUrl:u.avatarUrl, bio:u.bio })} />
+            onClick={() => onNav('profile', { handle:u.handle, author:u.name, initial:u.initial || u.name[0], avatarUrl:u.avatarUrl, bio:u.bio })} />
           <div style={{minWidth:0, flex:1, cursor:'pointer'}}
-            onClick={() => onNav('profile', { handle:u.handle, author:u.name, initial:u.name[0], bio:u.bio })}>
+            onClick={() => onNav('profile', { handle:u.handle, author:u.name, initial:u.initial || u.name[0], avatarUrl:u.avatarUrl, bio:u.bio })}>
             <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:15, color:'var(--ink)'}}>{u.name}</div>
             <div className="meta" style={{fontSize:10.5, marginTop:2}}>@{u.handle}</div>
             <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:4}}>{u.bio}</div>
@@ -216,16 +267,14 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
                     아직 쓴 글이 없습니다.
                   </div>
                 ),
-    '저장':  savedPosts.length ? renderPosts(savedPosts) : renderPosts(posts.slice(1,5)),
-    '좋아요': likedPosts.length ? renderPosts(likedPosts) : renderPosts(posts.slice(2,6)),
-    '팔로잉': follows?.size
-              ? renderUserList([...follows].map(h => {
+    '저장':  savedPosts.length ? renderPosts(savedPosts) : renderPosts([]),
+    '좋아요': likedPosts.length ? renderPosts(likedPosts) : renderPosts([]),
+    '팔로잉': followingList.length || follows?.size
+              ? renderUserList((followingList.length ? followingList : [...follows].map(h => {
                   const fromPost = posts.find(p => p.handle === h);
-                  const known = FOLLOWER_USERS.find(u => u.handle === h);
-                  if (fromPost) return { name: fromPost.author, handle: h, avatarUrl: fromPost.avatarUrl, bio: known?.bio || '글로 만난 작가입니다.' };
-                  if (known)    return { ...known, avatarUrl: null };
+                  if (fromPost) return { name: fromPost.author, handle: h, avatarUrl: fromPost.avatarUrl, bio: '글로 만난 작가입니다.' };
                   return { name: `@${h}`, handle: h, avatarUrl: null, bio: '' };
-                }), { unfollow: true })
+                })).map(profileToUserListItem), { unfollow: true })
               : (
                 <div style={{padding:'56px 0', textAlign:'center'}}>
                   <div style={{fontFamily:'var(--f-kr-serif)', fontSize:20, fontWeight:700, color:'var(--ink)', marginBottom:8}}>아직 팔로우한 작가가 없어요</div>
@@ -233,7 +282,13 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
                   <button className="btn sm solid" onClick={() => onNav('feed')}>둘러보기 <span className="arr">→</span></button>
                 </div>
               ),
-    '팔로워': renderUserList([...FOLLOWER_USERS].reverse()),
+    '팔로워': followersList.length
+              ? renderUserList(followersList.map(profileToUserListItem))
+              : (
+                <div style={{padding:'48px 0', textAlign:'center', color:'var(--ink-mute)', fontFamily:'var(--f-mono)', fontSize:12}}>
+                  아직 팔로워가 없습니다.
+                </div>
+              ),
     '차단':  blocks?.size
               ? (
                 <div>
@@ -269,7 +324,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
         <section style={{display:'grid', gridTemplateColumns:'1fr auto', gap:48, alignItems:'end', paddingBottom:28, borderBottom:'1px solid var(--rule)'}}>
           <div style={{display:'flex', gap:24, alignItems:'center'}}>
             {(() => {
-              const profileAvatar = viewUser ? viewUser.avatarUrl : user?.avatarUrl;
+              const profileAvatar = profileUser.avatarUrl;
               const resolved = resolveAssetUrl(profileAvatar);
               return resolved ? (
                 <img src={resolved} alt={name} className="avatar"
@@ -279,7 +334,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
               );
             })()}
             <div>
-              <div className="eyebrow" style={{marginBottom:8}}>WRITER · SINCE 2024·11</div>
+              <div className="eyebrow" style={{marginBottom:8}}>{formatJoinDate(profileUser.createdAt)}</div>
               <h1 style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:44, letterSpacing:'-0.02em', lineHeight:1, margin:0, color:'var(--ink)'}}>{name}</h1>
               <div style={{marginTop:8, display:'flex', gap:12, alignItems:'center', color:'var(--ink-mute)', fontSize:13}}>
                 <span className="meta">@{handle}</span>
@@ -386,7 +441,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
 
         {/* Stats */}
         <section style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:40, padding:'28px 0', borderBottom:'1px solid var(--rule-soft)'}}>
-          {[['누적 글','184','편'],['총 분량','62,340','자'],['받은 ♥','3,842',''],['팔로워','2,304',''],['현재 스트릭','47','일']].map(([k,v,s]) => (
+          {statsRows.map(([k,v,s]) => (
             <div key={k}>
               <div className="label" style={{fontSize:10, marginBottom:8}}>{k}</div>
               <div style={{fontFamily:'var(--f-latin)', fontWeight:700, fontSize:34, letterSpacing:'-0.04em', color:'var(--ink)', fontVariantNumeric:'tabular-nums', lineHeight:1}}>
@@ -403,7 +458,10 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
               <div>
                 <div className="eyebrow">연속 작성 · WRITING STREAK</div>
                 <div style={{fontFamily:'var(--f-kr-serif)', fontSize:22, fontWeight:700, marginTop:4, color:'var(--ink)'}}>
-                  47일 연속 기록 중 <span style={{color:'var(--accent)', fontFamily:'var(--f-latin)', fontSize:18, marginLeft:8}}>● 오늘 완료</span>
+                  {formatNumber(profileStats.streak?.current)}일 연속 기록 중
+                  {profileStats.streak?.completedToday && (
+                    <span style={{color:'var(--accent)', fontFamily:'var(--f-latin)', fontSize:18, marginLeft:8}}>● 오늘 완료</span>
+                  )}
                 </div>
               </div>
               <div className="profile-streak-chips" style={{display:'flex', gap:10}}>
@@ -413,12 +471,12 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
               </div>
             </div>
             <div className="streak" style={{overflowX:'auto'}}>
-              {streakData.map((s, i) => (
+              {(streakData.length ? streakData : Array.from({ length: Number(streakKey) }, () => 'off')).map((s, i) => (
                 <div key={i} className={`b ${s}`} style={{height: s==='off'?12 : s==='on'?30+((i*7)%40) : 74, flexShrink:0}} />
               ))}
             </div>
             <div style={{display:'flex', justifyContent:'space-between', marginTop:8, fontFamily:'var(--f-mono)', fontSize:10, color:'var(--ink-mute)'}}>
-              {streakLabels.map(l => <span key={l}>{l}</span>)}
+              {(streakLabels.length ? streakLabels : ['','','','','','','오늘']).map((l, i) => <span key={`${l}-${i}`}>{l}</span>)}
             </div>
           </section>
         )}
@@ -427,8 +485,8 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
         <section style={{padding:'28px 0'}}>
           <div style={{display:'flex', gap:20, marginBottom:20, borderBottom:'1px solid var(--rule-ghost)'}}>
             {(isOwnProfile
-              ? [['글',myPosts.length],['저장',56],['좋아요',412],['팔로잉', follows?.size || 0],['팔로워',2304],['차단', blocks?.size || 0]]
-              : [['글', posts.filter(p => p.handle === handle).length]]
+              ? [['글',myPosts.length],['저장',savedPosts.length],['좋아요',likedPosts.length],['팔로잉',profileStats.following || followingList.length || follows?.size || 0],['팔로워',profileStats.followers || followersList.length],['차단', blocks?.size || 0]]
+              : [['글', myPosts.length]]
             ).map(([k,n]) => (
               <button key={k} onClick={() => setProfileTab(k)} style={{
                 background:'none', border:'none', padding:'10px 2px',

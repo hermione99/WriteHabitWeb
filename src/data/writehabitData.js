@@ -132,8 +132,6 @@ export const TODAY_KW = {
   weekday: ['일','월','화','수','목','금','토'][_today.getDay()],
 };
 
-export const DEMO_EMAIL = 'minji@writehabit.kr';
-
 export const DEFAULT_PREFS = {
   emailDigest: true,
   notifLike: true,
@@ -164,26 +162,6 @@ export const KEYWORDS_ARCHIVE = [
   { date:'04·04', word:'집',   count:1098, eng:'HOME' },
   { date:'04·03', word:'밤',   count:1867, eng:'NIGHT' },
 ];
-
-export const SCHEDULED = [
-  { date:'04·23', day:'목', word:'이별',   eng:'FAREWELL',     status:'live',      by:'운영팀',  posts:1247 },
-  { date:'04·24', day:'금', word:'비',     eng:'RAIN',         status:'scheduled', by:'운영팀',  posts:null },
-  { date:'04·25', day:'토', word:'주말',   eng:'WEEKEND',      status:'scheduled', by:'운영팀',  posts:null },
-  { date:'04·26', day:'일', word:'산책',   eng:'WALK',         status:'scheduled', by:'이해인',  posts:null },
-  { date:'04·27', day:'월', word:'월요일', eng:'MONDAY',       status:'scheduled', by:'운영팀',  posts:null },
-  { date:'04·28', day:'화', word:'커피',   eng:'COFFEE',       status:'draft',     by:'김도현',  posts:null },
-  { date:'04·29', day:'수', word:'창가',   eng:'WINDOWSIDE',   status:'draft',     by:'운영팀',  posts:null },
-  { date:'04·30', day:'목', word:'',       eng:'',             status:'empty',     by:'',        posts:null },
-  { date:'05·01', day:'금', word:'봄밤',   eng:'SPRING NIGHT', status:'scheduled', by:'운영팀',  posts:null, fixed:'근로자의 날' },
-  { date:'05·02', day:'토', word:'',       eng:'',             status:'empty',     by:'',        posts:null },
-];
-
-export const STATUS_META = {
-  live:      { k:'LIVE',      c:'var(--accent)' },
-  scheduled: { k:'SCHEDULED', c:'var(--ink)' },
-  draft:     { k:'DRAFT',     c:'var(--ink-mute)' },
-  empty:     { k:'EMPTY',     c:'var(--ink-faint)' },
-};
 
 export const ACCOUNT_STORAGE_KEYS = [
   'wh_logged_in',

@@ -6,23 +6,38 @@ import { useToast } from '../components/Toast.jsx';
 import { createAdminKeywordSchedule, listAdminKeywordRecommendations, listAdminKeywordSchedule, listAdminReports, updateAdminKeywordSchedule, updateAdminReport } from '../lib/api.js';
 import { readString } from '../lib/storage.js';
 
-export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordPool = [], keywordsArchive = [], initialSchedule = [], statusMeta = {}}) => {
+const statusMeta = {
+  live: { k:'LIVE', c:'var(--accent)' },
+  scheduled: { k:'SCHEDULED', c:'var(--ink)' },
+  draft: { k:'DRAFT', c:'var(--ink-faint)' },
+  empty: { k:'EMPTY', c:'var(--ink-faint)' },
+  archived: { k:'ARCHIVED', c:'var(--ink-faint)' },
+};
+
+const getNextPublishLabel = (schedule) => {
+  const now = Date.now();
+  const next = schedule
+    .map((row) => row.startsAt ? new Date(row.startsAt).getTime() : null)
+    .filter((time) => Number.isFinite(time) && time > now)
+    .sort((a, b) => a - b)[0];
+  if (!next) return '—';
+  const diffMin = Math.max(0, Math.floor((next - now) / 60000));
+  const hours = Math.floor(diffMin / 60);
+  const minutes = diffMin % 60;
+  return `${hours}H ${String(minutes).padStart(2, '0')}M`;
+};
+
+export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout}) => {
   const toast = useToast();
   const suggestRef = useRef(null);
 
-  const [schedule, setSchedule] = useState(initialSchedule);
+  const [schedule, setSchedule] = useState([]);
   const [newDate, setNewDate]   = useState('');
   const [newWord, setNewWord]   = useState('');
   const [newEng, setNewEng]     = useState('');
   const [newPrompt, setNewPrompt] = useState('');
-  const [newCat, setNewCat]     = useState('');
   const [editIdx, setEditIdx]   = useState(null);
-  const [suggestions, setSuggestions] = useState([
-    {w:'첫눈', by:'한지우', v:48},
-    {w:'기차', by:'박서연', v:31},
-    {w:'편지', by:'정윤',   v:24},
-    {w:'엄마의 밥상', by:'김도현', v:18},
-  ]);
+  const [suggestions, setSuggestions] = useState([]);
   const [reports, setReports] = useState([]);
   const [reportFilter, setReportFilter] = useState('open');
   const [reportBusyId, setReportBusyId] = useState(null);
@@ -32,9 +47,11 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
     if (!token) return;
     listAdminKeywordSchedule(token)
       .then(({ schedule: remoteSchedule }) => {
-        if (Array.isArray(remoteSchedule) && remoteSchedule.length) setSchedule(remoteSchedule);
+        setSchedule(Array.isArray(remoteSchedule) ? remoteSchedule : []);
       })
-      .catch(() => {});
+      .catch((error) => {
+        toast(error.message || '키워드 스케줄을 불러오지 못했습니다.', 'error');
+      });
     listAdminReports(token)
       .then(({ reports: remoteReports }) => setReports(remoteReports || []))
       .catch(() => {});
@@ -45,98 +62,58 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
   const [aiLoading, setAiLoading] = useState(false);
   const aiRef = useRef(null);
 
-  /* Words already used (archive + current schedule + pending drafts) */
+  /* Words already used (current schedule + pending drafts) */
   const usedWords = useMemo(() => {
     const set = new Set();
-    keywordsArchive.forEach(k => set.add(k.word));
     schedule.forEach(r => r.word && set.add(r.word));
     aiDrafts.forEach(d => set.add(d.word));
     return set;
-  }, [schedule, aiDrafts, keywordsArchive]);
-
-  /* Local fallback when the API is temporarily unavailable. */
-  const generateAIKeywords = async (n = 7) => {
-    await new Promise(r => setTimeout(r, 900)); // fake latency
-    const candidates = keywordPool.filter(k => !usedWords.has(k.word));
-    // shuffle then take n
-    const shuffled = candidates
-      .map(k => [Math.random(), k])
-      .sort((a, b) => a[0] - b[0])
-      .map(([, k]) => k);
-    const chosen = shuffled.slice(0, n);
-    const today = new Date();
-    const lastDate = schedule[schedule.length - 1]?.date || `${String(today.getMonth()+1).padStart(2,'0')}·${String(today.getDate()).padStart(2,'0')}`;
-    const [lm, ld] = lastDate.split('·').map(Number);
-    let cursor = new Date(today.getFullYear(), (lm||today.getMonth()+1) - 1, ld||today.getDate());
-    return chosen.map((k, i) => {
-      cursor = new Date(cursor.getTime() + 86400000);
-      const d  = `${String(cursor.getMonth()+1).padStart(2,'0')}·${String(cursor.getDate()).padStart(2,'0')}`;
-      const dy = ['일','월','화','수','목','금','토'][cursor.getDay()];
-      return {
-        ...k,
-        date: d,
-        day: dy,
-        prompt: `오늘의 키워드는 '${k.word}'입니다. 이 단어가 떠오르게 하는 장면을 한 문단으로 적어보세요.`,
-        reason: `'${k.word}' — 풀에서 미사용 키워드로 추출됨`,
-      };
-    });
-  };
+  }, [schedule, aiDrafts]);
 
   const handleAIGenerate = async () => {
     if (aiLoading) return;
     setAiLoading(true);
     try {
       const token = readString('wh_auth_token');
-      let drafts = [];
-      if (token) {
-        try {
-          const response = await listAdminKeywordRecommendations({ count: 7, token });
-          drafts = response.recommendations || [];
-        } catch (error) {
-          if (error.status !== 503 && error.status !== 401) {
-            toast(error.message || 'AI 키워드 추천에 실패했습니다.', 'error');
-            return;
-          }
-        }
+      if (!token) {
+        toast('관리자 로그인이 필요합니다.', 'error');
+        return;
       }
-      if (!drafts.length) drafts = await generateAIKeywords(7);
+      const response = await listAdminKeywordRecommendations({ count: 7, token });
+      const drafts = (response.recommendations || []).filter((draft) => !usedWords.has(draft.word));
       setAiDrafts(drafts);
       toast(`AI 추천 키워드 ${drafts.length}개를 생성했습니다. 검수해주세요.`);
       setTimeout(() => aiRef.current?.scrollIntoView({behavior:'smooth'}), 50);
+    } catch (error) {
+      toast(error.message || 'AI 키워드 추천에 실패했습니다.', 'error');
     } finally { setAiLoading(false); }
   };
 
   const handleAIApprove = async (idx) => {
     const d = aiDrafts[idx];
+    if (!d) return null;
     const token = readString('wh_auth_token');
-    const fallbackEntry = { date: d.date, day: d.day, word: d.word, eng: d.eng, prompt: d.prompt, status: 'scheduled', by: 'AI · 운영팀', posts: null };
-
-    if (token) {
-      try {
-        const { schedule: saved } = await createAdminKeywordSchedule({
-          date: d.date,
-          word: d.word,
-          eng: d.eng,
-          prompt: d.prompt,
-          status: 'scheduled',
-          token,
-        });
-        setSchedule(s => [...s, saved].sort((a, b) => String(a.date).localeCompare(String(b.date))));
-        setAiDrafts(arr => arr.filter((_, i) => i !== idx));
-        toast(`${d.word} · ${d.eng} — 승인되어 예약되었습니다.`);
-        return saved;
-      } catch (error) {
-        if (error.status !== 503 && error.status !== 401) {
-          toast(error.message || '예약 등록에 실패했습니다.', 'error');
-          throw error;
-        }
-      }
+    if (!token) {
+      toast('관리자 로그인이 필요합니다.', 'error');
+      return null;
     }
-
-    setSchedule(s => [...s, fallbackEntry]);
-    setAiDrafts(arr => arr.filter((_, i) => i !== idx));
-    toast(`${d.word} · ${d.eng} — 로컬에서 승인되었습니다.`);
-    return fallbackEntry;
+    try {
+      const { schedule: saved } = await createAdminKeywordSchedule({
+        date: d.date,
+        word: d.word,
+        eng: d.eng,
+        prompt: d.prompt,
+        status: 'scheduled',
+        token,
+      });
+      setSchedule(s => [...s, saved].sort((a, b) => String(a.startsAt || a.date).localeCompare(String(b.startsAt || b.date))));
+      setAiDrafts(arr => arr.filter((_, i) => i !== idx));
+      toast(`${d.word} · ${d.eng} — 승인되어 예약되었습니다.`);
+      return saved;
+    } catch (error) {
+      toast(error.message || '예약 등록에 실패했습니다.', 'error');
+      throw error;
+    }
   };
 
   const handleAIReject = (idx) => {
@@ -147,28 +124,19 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
 
   const handleAIRegenerate = async (idx) => {
     const token = readString('wh_auth_token');
-    if (token) {
-      try {
-        const response = await listAdminKeywordRecommendations({ count: 1, token });
-        const [pick] = response.recommendations || [];
-        if (pick) {
-          setAiDrafts(arr => arr.map((d, i) => i === idx ? pick : d));
-          toast(`다시 추천되었습니다 · ${pick.word}`);
-          return;
-        }
-      } catch (error) {
-        if (error.status !== 503 && error.status !== 401) {
-          toast(error.message || '다시 추천에 실패했습니다.', 'error');
-          return;
-        }
-      }
+    if (!token) {
+      toast('관리자 로그인이 필요합니다.', 'error');
+      return;
     }
-
-    const candidates = keywordPool.filter(k => !usedWords.has(k.word));
-    if (!candidates.length) { toast('더 이상 사용할 수 있는 키워드가 없습니다.'); return; }
-    const pick = candidates[Math.floor(Math.random() * candidates.length)];
-    setAiDrafts(arr => arr.map((d, i) => i === idx ? { ...d, word: pick.word, eng: pick.eng, reason: `'${pick.word}' — 재생성됨` } : d));
-    toast(`다시 생성되었습니다 · ${pick.word}`);
+    try {
+      const response = await listAdminKeywordRecommendations({ count: 1, token });
+      const [pick] = (response.recommendations || []).filter((draft) => !usedWords.has(draft.word));
+      if (!pick) { toast('새로 추천할 키워드가 없습니다.'); return; }
+      setAiDrafts(arr => arr.map((d, i) => i === idx ? pick : d));
+      toast(`다시 추천되었습니다 · ${pick.word}`);
+    } catch (error) {
+      toast(error.message || '다시 추천에 실패했습니다.', 'error');
+    }
   };
 
   const handleAIApproveAll = async () => {
@@ -176,12 +144,24 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
     const drafts = [...aiDrafts];
     let approved = 0;
     for (const draft of drafts) {
-      const idx = aiDrafts.findIndex(item => item.word === draft.word && item.date === draft.date);
+      const idx = drafts.findIndex(item => item.word === draft.word && item.date === draft.date);
       if (idx >= 0) {
         try {
-          await handleAIApprove(idx);
+          const token = readString('wh_auth_token');
+          if (!token) throw new Error('관리자 로그인이 필요합니다.');
+          const { schedule: saved } = await createAdminKeywordSchedule({
+            date: draft.date,
+            word: draft.word,
+            eng: draft.eng,
+            prompt: draft.prompt,
+            status: 'scheduled',
+            token,
+          });
+          setSchedule(s => [...s, saved].sort((a, b) => String(a.startsAt || a.date).localeCompare(String(b.startsAt || b.date))));
+          setAiDrafts(arr => arr.filter(item => !(item.word === draft.word && item.date === draft.date)));
           approved += 1;
-        } catch {
+        } catch (error) {
+          toast(error.message || '일괄 승인 중 오류가 발생했습니다.', 'error');
           break;
         }
       }
@@ -192,37 +172,24 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
   const handleSubmit = async () => {
     if (!newWord.trim()) { toast('한글 키워드를 입력해주세요.'); return; }
     if (!newEng.trim())  { toast('영문 키워드를 입력해주세요.'); return; }
-    const day = newDate || '미정';
-    const fallback = {
-      date: day, day: '?', word: newWord.trim(), eng: newEng.trim().toUpperCase(),
-      status: 'scheduled', by: user?.nickname || '운영팀', posts: null,
-    };
+    if (!newDate.trim()) { toast('발행일을 입력해주세요.'); return; }
     const token = readString('wh_auth_token');
-    if (token && newDate) {
-      try {
-        const { schedule: saved } = await createAdminKeywordSchedule({
-          date: newDate,
-          word: newWord.trim(),
-          eng: newEng.trim().toUpperCase(),
-          prompt: newPrompt,
-          status: 'scheduled',
-          token,
-        });
-        setSchedule(s => [...s, saved]);
-        toast(`${newWord} · ${newEng.toUpperCase()} — 예약 등록 완료`);
-        setNewDate(''); setNewWord(''); setNewEng(''); setNewPrompt(''); setNewCat('');
-        return;
-      } catch (error) {
-        if (error.status !== 503 && error.status !== 401) {
-          toast(error.message || '예약 등록에 실패했습니다.');
-          return;
-        }
-      }
+    if (!token) { toast('관리자 로그인이 필요합니다.', 'error'); return; }
+    try {
+      const { schedule: saved } = await createAdminKeywordSchedule({
+        date: newDate,
+        word: newWord.trim(),
+        eng: newEng.trim().toUpperCase(),
+        prompt: newPrompt,
+        status: 'scheduled',
+        token,
+      });
+      setSchedule(s => [...s, saved].sort((a, b) => String(a.startsAt || a.date).localeCompare(String(b.startsAt || b.date))));
+      toast(`${newWord} · ${newEng.toUpperCase()} — 예약 등록 완료`);
+      setNewDate(''); setNewWord(''); setNewEng(''); setNewPrompt('');
+    } catch (error) {
+      toast(error.message || '예약 등록에 실패했습니다.', 'error');
     }
-
-    setSchedule(s => [...s, fallback]);
-    toast(`${newWord} · ${newEng.toUpperCase()} — 예약 등록 완료`);
-    setNewDate(''); setNewWord(''); setNewEng(''); setNewPrompt(''); setNewCat('');
   };
 
   const handleAssignEmpty = (r) => {
@@ -317,6 +284,13 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
     ? reports
     : reports.filter(r => r.status === reportFilter);
   const reportCounts = reports.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
+  const adminStats = [
+    ['예약된 키워드', String(schedule.filter(r=>r.status==='scheduled'||r.status==='draft').length), '일치'],
+    ['미배정 슬롯', String(schedule.filter(r=>r.status==='empty').length), '일'],
+    ['AI 검수 대기', String(aiDrafts.length), '건'],
+    ['신고 대기', String((reportCounts.open || 0) + (reportCounts.reviewing || 0)), '건'],
+    ['다음 발행까지', getNextPublishLabel(schedule), ''],
+  ];
 
   return (
     <div style={{overflowX:'hidden'}}>
@@ -348,7 +322,7 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
         </div>
 
         <section style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:40, padding:'22px 0', borderBottom:'1px solid var(--rule-soft)'}}>
-          {[['예약된 키워드', String(schedule.filter(r=>r.status==='scheduled'||r.status==='draft').length), '일치'],['미배정 슬롯', String(schedule.filter(r=>r.status==='empty').length),'일'],['유저 제안 대기', String(suggestions.length),'건'],['평균 참여','1,584','편/일'],['다음 발행까지','14H 32M','']].map(([k,v,s]) => (
+          {adminStats.map(([k,v,s]) => (
             <div key={k}>
               <div className="label" style={{fontSize:10, marginBottom:6}}>{k}</div>
               <div style={{fontFamily:'var(--f-latin)', fontWeight:700, fontSize:28, letterSpacing:'-0.04em', color:'var(--ink)', fontVariantNumeric:'tabular-nums', lineHeight:1}}>
@@ -371,7 +345,7 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
             </div>
 
             {schedule.map((r, i) => {
-              const st = statusMeta[r.status];
+              const st = statusMeta[r.status] || statusMeta.scheduled;
               const isToday = r.status === 'live';
               const empty = r.status === 'empty';
               const isEditing = editIdx === i;
@@ -440,11 +414,6 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
                 <textarea className="field" placeholder="오늘의 키워드 아래에 보여줄 안내 문구" value={newPrompt} onChange={e=>setNewPrompt(e.target.value)}
                   style={{minHeight:72, resize:'none', border:'none', borderBottom:'1px solid var(--rule-soft)', outline:'none', background:'transparent', fontFamily:'var(--f-kr)', fontSize:14, color:'var(--ink)', width:'100%'}} />
               </div>
-              <div style={{display:'flex', gap:8, marginBottom:14, flexWrap:'wrap'}}>
-                {['감정','계절','장소','시간','관계'].map(c => (
-                  <button key={c} className={`chip${newCat===c?' active':''}`} onClick={() => setNewCat(newCat===c?'':c)}>{c}</button>
-                ))}
-              </div>
               <button className="btn accent" style={{width:'100%', justifyContent:'center'}} onClick={handleSubmit}>예약 등록</button>
             </div>
 
@@ -509,10 +478,6 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout, keywordP
                   </div>
                 </div>
               ))}
-              {suggestions.length > 0 && (
-                <button className="btn sm" style={{width:'100%', justifyContent:'center', marginTop:12}}
-                  onClick={() => toast('전체 제안 목록 — 준비 중입니다.')}>전체 보기 →</button>
-              )}
             </div>
 
             <div className="panel" style={{background:'var(--paper-2)'}}>

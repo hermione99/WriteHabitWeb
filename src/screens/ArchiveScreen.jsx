@@ -1,24 +1,57 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '../components/Toast.jsx';
 
-export const ArchiveScreen = ({onNav, keywords = []}) => {
+const formatMonthDay = (date) => {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return '';
+  return `${String(value.getMonth() + 1).padStart(2, '0')}·${String(value.getDate()).padStart(2, '0')}`;
+};
+
+const formatYearMonthDay = (date) => {
+  const value = new Date(date);
+  if (Number.isNaN(value.getTime())) return '';
+  return `${value.getFullYear()}·${String(value.getMonth() + 1).padStart(2, '0')}·${String(value.getDate()).padStart(2, '0')}`;
+};
+
+const getKeywordYear = (keyword) => keyword.startsAt ? String(new Date(keyword.startsAt).getFullYear()) : '2026';
+const getKeywordMonth = (keyword) => keyword.startsAt
+  ? String(new Date(keyword.startsAt).getMonth() + 1).padStart(2, '0')
+  : (keyword.date || '').split('·')[0] || '04';
+
+export const ArchiveScreen = ({onNav, keywords = [], stats}) => {
   const toast = useToast();
   const [showMore, setShowMore] = useState(false);
-  const [filterYear, setFilterYear] = useState('2026');
-  const [filterMonth, setFilterMonth] = useState('04');
+  const years = [...new Set(keywords.map(getKeywordYear))].sort((a, b) => b.localeCompare(a));
+  const months = [...new Set(keywords.map(getKeywordMonth))].sort((a, b) => b.localeCompare(a));
+  const [filterYear, setFilterYear] = useState(years[0] || '2026');
+  const [filterMonth, setFilterMonth] = useState(months[0] || '04');
   const [yearOpen, setYearOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
 
-  const today = 27;
-  const keywordDays = 27;
-  const grid = Array.from({length:98}, (_, i) => {
-    if (i === today) return 'today';
-    if (i > today) return 'future';
-    const r = Math.sin(i*2.1) + Math.cos(i*0.7);
-    return r > 0.3 ? 'on' : r > -0.5 ? 'on-light' : 'none';
-  });
+  useEffect(() => {
+    if (years.length && !years.includes(filterYear)) setFilterYear(years[0]);
+    if (months.length && !months.includes(filterMonth)) setFilterMonth(months[0]);
+  }, [years, months, filterYear, filterMonth]);
 
-  const visibleKeywords = showMore ? keywords : keywords.slice(0, 10);
+  const filteredKeywords = keywords.filter((k) => getKeywordYear(k) === filterYear && getKeywordMonth(k) === filterMonth);
+  const keywordDays = stats?.serviceDays || keywords.length;
+  const totalWritings = stats?.posts ?? keywords.reduce((sum, k) => sum + (k.count || 0), 0);
+  const visibleKeywords = showMore ? filteredKeywords : filteredKeywords.slice(0, 10);
+  const topKeywords = [...keywords]
+    .filter((k) => k.count > 0)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 4);
+  const now = new Date();
+  const daysInMonth = new Date(Number(filterYear), Number(filterMonth), 0).getDate();
+  const keywordDateSet = new Set(filteredKeywords.map((k) => k.startsAt ? formatMonthDay(k.startsAt) : k.date));
+  const grid = Array.from({length: daysInMonth}, (_, i) => {
+    const dateKey = `${filterMonth}·${String(i + 1).padStart(2, '0')}`;
+    const cellDate = new Date(Number(filterYear), Number(filterMonth) - 1, i + 1);
+    const isToday = cellDate.toDateString() === now.toDateString();
+    if (isToday) return 'today';
+    if (cellDate > now) return 'future';
+    return keywordDateSet.has(dateKey) ? 'on' : 'none';
+  });
 
   const handleRead = (k) => {
     toast(`${k.word} · ${k.eng} — 글 목록으로 이동합니다`);
@@ -62,25 +95,25 @@ export const ArchiveScreen = ({onNav, keywords = []}) => {
       <div className="wrap" style={{paddingTop:36}}>
         <section style={{display:'grid', gridTemplateColumns:'1fr auto', gap:40, alignItems:'end', paddingBottom:24, borderBottom:'1px solid var(--rule)'}}>
           <div>
-            <div className="eyebrow" style={{marginBottom:10}}>ARCHIVE · {keywordDays} DAYS · 428,932 WRITINGS</div>
+            <div className="eyebrow" style={{marginBottom:10}}>ARCHIVE · {keywordDays.toLocaleString()} DAYS · {totalWritings.toLocaleString()} WRITINGS</div>
             <h1 className="hero-title-xl" style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:56, letterSpacing:'-0.025em', lineHeight:1, margin:0, color:'var(--ink)'}}>키워드 아카이브</h1>
-            <p style={{fontSize:14, color:'var(--ink-mute)', marginTop:14, maxWidth:'48ch', lineHeight:1.65}}>2026년 4월 1일부터 매일 하나씩, {keywordDays}개의 키워드가 쌓였습니다. 한 글자, 한 단어, 하나의 감정에 대한 기록.</p>
+            <p style={{fontSize:14, color:'var(--ink-mute)', marginTop:14, maxWidth:'48ch', lineHeight:1.65}}>2026년 4월 1일부터 매일 하나씩, {keywordDays.toLocaleString()}개의 키워드가 쌓였습니다. 한 글자, 한 단어, 하나의 감정에 대한 기록.</p>
           </div>
           <div style={{display:'flex', gap:8}} onClick={e => e.stopPropagation()}>
             <DropFilter label="연도" value={filterYear} open={yearOpen}
               onToggle={() => { setYearOpen(v=>!v); setMonthOpen(false); }}
-              options={['2025','2026']} onSelect={setFilterYear} />
+              options={years.length ? years : ['2026']} onSelect={setFilterYear} />
             <DropFilter label="월" value={filterMonth} open={monthOpen}
               onToggle={() => { setMonthOpen(v=>!v); setYearOpen(false); }}
-              options={['01','02','03','04','05','06','07','08','09','10','11','12']} onSelect={setFilterMonth} />
+              options={months.length ? months : ['04']} onSelect={setFilterMonth} />
           </div>
         </section>
 
         <section style={{display:'grid', gridTemplateColumns:'420px 1fr', gap:56, paddingTop:32}}>
           <div>
             <div className="col-h">
-              <h2>지난 98일</h2>
-              <span className="meta">2026·04·01 → 04·27</span>
+              <h2>{filterYear}년 {filterMonth}월</h2>
+              <span className="meta">{filteredKeywords.length.toLocaleString()} KEYWORDS</span>
             </div>
             <div className="cal">
               {grid.map((s, i) => (
@@ -104,17 +137,19 @@ export const ArchiveScreen = ({onNav, keywords = []}) => {
             <div style={{marginTop:32}}>
               <div className="col-h"><h2>가장 많이 쓴 키워드</h2></div>
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}>
-                {[['YOUTH','청춘',12],['MEMORY','기억',9],['DAWN','새벽',7],['SILENCE','침묵',6]].map(([e,k,n], i) => (
-                  <div key={i} onClick={() => handleTopKw(k)} style={{border:'1px solid var(--rule-ghost)', padding:16, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer'}}>
+                {topKeywords.length ? topKeywords.map((item, i) => (
+                  <div key={item.id || item.word || i} onClick={() => handleTopKw(item.word)} style={{border:'1px solid var(--rule-ghost)', padding:16, display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer'}}>
                     <div>
-                      <div className="meta" style={{fontSize:9.5}}>{e}</div>
-                      <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:22, letterSpacing:'-0.02em'}}>{k}</div>
+                      <div className="meta" style={{fontSize:9.5}}>{item.eng || 'KEYWORD'}</div>
+                      <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:22, letterSpacing:'-0.02em'}}>{item.word}</div>
                     </div>
                     <div style={{fontFamily:'var(--f-latin)', fontWeight:700, fontSize:22, color:'var(--accent)', fontVariantNumeric:'tabular-nums'}}>
-                      {n}<span style={{fontSize:11, color:'var(--ink-mute)', fontWeight:500, marginLeft:2}}>회</span>
+                      {item.count.toLocaleString()}<span style={{fontSize:11, color:'var(--ink-mute)', fontWeight:500, marginLeft:2}}>글</span>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="meta" style={{fontSize:11}}>아직 작성 데이터가 없습니다.</div>
+                )}
               </div>
             </div>
           </div>
@@ -126,14 +161,14 @@ export const ArchiveScreen = ({onNav, keywords = []}) => {
             </div>
             {visibleKeywords.map((k, i) => (
               <div className="kw-row" key={i}>
-                <span className="kdate">2026·{k.date}</span>
+                <span className="kdate">{k.startsAt ? formatYearMonthDay(k.startsAt) : `${filterYear}·${k.date}`}</span>
                 <div>
                   <div className="kword">
                     <span className="kor-serif">{k.word}</span>
                     <span style={{marginLeft:14, color:'var(--ink-faint)', fontFamily:'var(--f-serif)', fontSize:14, letterSpacing:'0.08em'}}>{k.eng}</span>
                   </div>
                   <div className="meta" style={{fontSize:10.5, marginTop:2}}>
-                    NO. {String(Math.max(1, keywordDays - i)).padStart(4,'0')} · {i===0 ? '작성함 ✓' : i%3!==0 ? '작성함 ✓' : '미작성 —'}
+                    NO. {String(Math.max(1, keywordDays - i)).padStart(4,'0')}
                   </div>
                 </div>
                 <div className="kcount">{k.count.toLocaleString()}<small>글</small></div>
@@ -142,7 +177,7 @@ export const ArchiveScreen = ({onNav, keywords = []}) => {
                 </div>
               </div>
             ))}
-            {!showMore && (
+            {!showMore && filteredKeywords.length > 10 && (
               <div style={{textAlign:'center', padding:'28px 0 8px'}}>
                 <button className="btn ghost" onClick={() => setShowMore(true)}>
                   더 오래된 키워드 보기 <span className="arr">↓</span>
