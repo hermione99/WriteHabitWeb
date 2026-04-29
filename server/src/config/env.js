@@ -20,6 +20,10 @@ export const env = {
   frontendOrigin: process.env.FRONTEND_ORIGIN || parseOrigins(process.env.CORS_ORIGIN)[0] || 'http://127.0.0.1:5173',
   resendApiKey: process.env.RESEND_API_KEY || '',
   passwordResetFrom: process.env.PASSWORD_RESET_FROM || 'WriteHabit <onboarding@resend.dev>',
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  cloudinaryFolder: process.env.CLOUDINARY_FOLDER || 'writehabit/avatars',
 };
 
 if (isProduction) {

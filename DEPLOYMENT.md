@@ -52,6 +52,10 @@ CORS_ORIGIN=https://<your-vercel-domain>
 FRONTEND_ORIGIN=https://<your-vercel-domain>
 RESEND_API_KEY=<resend api key>
 PASSWORD_RESET_FROM=WriteHabit <noreply@your-domain>
+CLOUDINARY_CLOUD_NAME=<cloudinary cloud name>
+CLOUDINARY_API_KEY=<cloudinary api key>
+CLOUDINARY_API_SECRET=<cloudinary api secret>
+CLOUDINARY_FOLDER=writehabit/avatars
 ```
 
 After the first deploy, run migrations against the production database:
@@ -112,13 +116,32 @@ pg_restore --clean --if-exists --no-owner --no-acl --dbname "$DATABASE_URL" back
 
 Do not run restore commands against production unless you have intentionally decided to roll back data.
 
-Current upload storage note:
+## 4. Cloudinary Upload Storage
+
+Profile image uploads should use Cloudinary in beta and production. Create a Cloudinary account, then add these Render API environment variables:
+
+```bash
+CLOUDINARY_CLOUD_NAME=<cloudinary cloud name>
+CLOUDINARY_API_KEY=<cloudinary api key>
+CLOUDINARY_API_SECRET=<cloudinary api secret>
+CLOUDINARY_FOLDER=writehabit/avatars
+```
+
+After saving the variables, redeploy the Render API. Avatar uploads will return Cloudinary `https://res.cloudinary.com/...` URLs and store those URLs in the user profile.
+
+Local development fallback:
+
+- If the Cloudinary variables are missing, the API still stores files under `server/uploads`.
+- This fallback is only for local development.
+- Do not rely on Render local filesystem uploads for beta or production.
+
+Legacy upload storage note:
 
 - Profile image uploads are stored on the Render service filesystem under `server/uploads`.
 - Render local filesystem is not a durable user-file storage strategy.
-- Before a wider beta, move uploads to external storage such as Cloudinary, S3, or Vercel Blob.
+- Existing local upload URLs such as `/uploads/avatars/...` may disappear if the Render filesystem is replaced.
 
-## 4. Vercel Web
+## 5. Vercel Web
 
 Create a Vercel project from this repository.
 
@@ -141,7 +164,7 @@ After Vercel gives you a domain, update Render:
 CORS_ORIGIN=https://<your-vercel-domain>
 ```
 
-## 5. Smoke Test
+## 6. Smoke Test
 
 Backend:
 
