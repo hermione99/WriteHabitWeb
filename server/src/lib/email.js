@@ -1,8 +1,25 @@
 import { env } from '../config/env.js';
 
+const sanitizeFromAddress = (value) => value
+  .trim()
+  .replace(/^['"]|['"]$/g, '')
+  .replace(/^PASSWORD_RESET_FROM=/, '')
+  .trim();
+
+const isValidFromAddress = (value) => {
+  const email = '[^\\s@<>]+@[^\\s@<>]+\\.[^\\s@<>]+';
+  return new RegExp(`^(${email}|[^<>]+ <${email}>)$`).test(value);
+};
+
 export const sendPasswordResetEmail = async ({ to, resetUrl }) => {
   if (!env.resendApiKey) {
     return { sent: false, reason: 'missing_resend_api_key' };
+  }
+
+  const from = sanitizeFromAddress(env.passwordResetFrom);
+  if (!isValidFromAddress(from)) {
+    console.error('Invalid PASSWORD_RESET_FROM format. Use no-reply@example.com or WriteHabit <no-reply@example.com>.');
+    return { sent: false, reason: 'invalid_from_address' };
   }
 
   const response = await fetch('https://api.resend.com/emails', {
@@ -12,7 +29,7 @@ export const sendPasswordResetEmail = async ({ to, resetUrl }) => {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      from: env.passwordResetFrom,
+      from,
       to,
       subject: 'WriteHabit 비밀번호 재설정',
       html: `
@@ -29,7 +46,8 @@ export const sendPasswordResetEmail = async ({ to, resetUrl }) => {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    throw new Error(data.message || 'Password reset email failed');
+    console.error('Password reset email failed:', data.message || response.statusText);
+    return { sent: false, reason: 'email_provider_error' };
   }
 
   return { sent: true };

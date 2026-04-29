@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Logo } from '../components/Logo.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { API_ORIGIN, checkHandleAvailability, confirmPasswordReset, login, register, requestPasswordReset } from '../lib/api.js';
-import { CONTACT_MAILTO } from '../lib/contact.js';
+import { checkHandleAvailability, confirmPasswordReset, login, register, requestPasswordReset } from '../lib/api.js';
+import { CONTACT_EMAIL, CONTACT_MAILTO, PASSWORD_RESET_HELP_MAILTO } from '../lib/contact.js';
 import { checkHandleAvailable as checkLocalHandleAvailable, sanitizeHandle } from '../lib/handles.js';
 
 /* Defined outside LoginScreen so React never remounts it on re-render */
@@ -20,7 +20,7 @@ const LoginField = ({id, label, type='text', value, onChange, placeholder, err, 
   </div>
 );
 
-export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = []}) => {
+export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, knownHandles = []}) => {
   const toast = useToast();
 
   /* mode: 'login' | 'signup' | 'reset' | 'resetConfirm' */
@@ -159,11 +159,11 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
       if (result.resetUrl) setResetDevUrl(result.resetUrl);
       setResetNotice(result.emailSent
         ? '계정이 존재하면 재설정 링크를 이메일로 보냈습니다. 링크는 30분 동안 유효합니다.'
-        : '메일 발송 설정이 아직 완료되지 않았습니다. 문의/피드백으로 비밀번호 재설정을 요청해주세요.'
+        : `메일 발송이 지연되고 있습니다. ${CONTACT_EMAIL}로 비밀번호 재설정을 요청해주세요.`
       );
-      toast(result.emailSent ? '재설정 링크를 이메일로 보냈습니다.' : '메일 발송 설정을 확인해주세요.', result.emailSent ? 'info' : 'error');
+      toast(result.emailSent ? '재설정 링크를 이메일로 보냈습니다.' : '메일 발송이 지연되고 있습니다.', result.emailSent ? 'info' : 'error');
     } catch (error) {
-      setErrors({ resetEmail: error.message || '재설정 요청에 실패했습니다.' });
+      setErrors({ resetEmail: '재설정 요청을 처리하지 못했습니다. 잠시 후 다시 시도하거나 문의/피드백으로 알려주세요.' });
     } finally {
       setLoading(false);
     }
@@ -219,7 +219,7 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
         </div>
         <div className="meta" style={{fontSize:10.5, lineHeight:1.6}}>
           © 2026 WriteHabit · Beta<br/>
-          베타 기간에는 기능과 데이터 구조가 조정될 수 있습니다.
+          문의/피드백 · {CONTACT_EMAIL}
         </div>
       </aside>
 
@@ -258,7 +258,9 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
               {mode === 'resetConfirm' ? <>새 비밀번호를<br/>설정합니다.</> : <>비밀번호를<br/>재설정합니다.</>}
             </h2>
             <p style={{color:'var(--ink-mute)', fontSize:14, margin:'0 0 32px', lineHeight:1.65}}>
-              {mode === 'resetConfirm' ? '새 비밀번호는 8자 이상으로 입력해주세요.' : <>가입 시 사용한 이메일을 입력하면<br/>재설정 링크를 보내드립니다.</>}
+              {mode === 'resetConfirm'
+                ? '새 비밀번호는 8자 이상으로 입력해주세요.'
+                : <>가입 시 사용한 이메일을 입력하면<br/>30분 동안 유효한 재설정 링크를 보내드립니다.</>}
             </p>
 
             {mode === 'resetConfirm' ? (
@@ -291,9 +293,9 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
                     <div style={{fontSize:13, color:'var(--ink-mute)', lineHeight:1.65}}>
                       {resetNotice}
                     </div>
-                    {!resetDevUrl && resetNotice.includes('문의') && (
-                      <a className="btn sm ghost" href={CONTACT_MAILTO} style={{display:'inline-flex', marginTop:12, textDecoration:'none'}}>
-                        문의/피드백 보내기
+                    {!resetDevUrl && resetNotice.includes(CONTACT_EMAIL) && (
+                      <a className="btn sm ghost" href={PASSWORD_RESET_HELP_MAILTO} style={{display:'inline-flex', marginTop:12, textDecoration:'none'}}>
+                        비밀번호 재설정 문의
                       </a>
                     )}
                     {resetDevUrl && (
@@ -326,6 +328,10 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
             <p style={{color:'var(--ink-mute)', fontSize:14, margin:'0 0 32px'}}>
               {mode==='signup' ? '지금 가입하고 오늘의 글을 써보세요.' : '어제의 당신이 남긴 글이 기다리고 있어요.'}
             </p>
+            <div className="login-beta-note">
+              <strong>베타 서비스 안내</strong>
+              <span>현재 WriteHabit은 베타 운영 중입니다. 오류 제보와 사용 피드백은 {CONTACT_EMAIL}로 받고 있습니다.</span>
+            </div>
 
             {/* global form error */}
             {errors.form && (
@@ -413,11 +419,6 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
                 </button>
               )}
 
-              {mode==='login' && (
-                <p style={{marginTop:12, fontSize:11.5, color:'var(--ink-faint)', textAlign:'center', fontFamily:'var(--f-mono)'}}>
-                  API 서버: {API_ORIGIN}
-                </p>
-              )}
             </form>
 
             <p style={{marginTop:28, fontSize:12.5, color:'var(--ink-mute)', textAlign:'center'}}>
@@ -427,6 +428,11 @@ export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = [
                 {mode==='signup' ? '로그인' : '회원가입'}
               </button>
             </p>
+            <div className="login-legal-links">
+              <button type="button" onClick={() => onLegalNav?.('terms')}>이용약관</button>
+              <button type="button" onClick={() => onLegalNav?.('privacy')}>개인정보처리방침</button>
+              <a href={CONTACT_MAILTO}>문의/피드백</a>
+            </div>
           </>)}
 
         </div>

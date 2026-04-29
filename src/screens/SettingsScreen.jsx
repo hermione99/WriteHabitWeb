@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../components/Toast.jsx';
+import { CONTACT_EMAIL, CONTACT_MAILTO, PASSWORD_RESET_HELP_MAILTO } from '../lib/contact.js';
 
 const Toggle = ({on, onClick, label, desc}) => (
   <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', borderBottom:'1px solid var(--rule-ghost)', gap:16}}>
@@ -72,7 +73,7 @@ export const SettingsScreen = ({onNav, user, prefs, onUpdatePrefs, dark, onToggl
             <div className="label" style={{fontSize:10}}>비밀번호</div>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
               <span style={{fontFamily:'var(--f-mono)', fontSize:13, color:'var(--ink-soft)'}}>············</span>
-              <button className="btn sm ghost" onClick={() => toast('비밀번호 변경 메일을 발송했습니다.')}>변경</button>
+              <button className="btn sm ghost" onClick={() => toast('로그아웃 후 로그인 화면의 비밀번호 찾기에서 재설정할 수 있습니다.', 'info')}>변경</button>
             </div>
           </div>
         </section>
@@ -108,6 +109,41 @@ export const SettingsScreen = ({onNav, user, prefs, onUpdatePrefs, dark, onToggl
               <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:2}}>작성한 글·댓글·팔로우·차단 정보를 JSON으로 다운로드합니다.</div>
             </div>
             <button className="btn sm" onClick={onExportData}>다운로드 <span className="arr">↓</span></button>
+          </div>
+        </section>
+
+        {/* 운영 안내 */}
+        <section style={{marginBottom:48}}>
+          <h2 style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:20, margin:'0 0 16px', color:'var(--ink)', paddingBottom:10, borderBottom:'1px solid var(--rule)'}}>운영 안내</h2>
+          <div style={{padding:'14px 0', borderBottom:'1px solid var(--rule-ghost)'}}>
+            <div style={{fontFamily:'var(--f-kr)', fontSize:14, fontWeight:600, color:'var(--ink)'}}>베타 서비스</div>
+            <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:4, lineHeight:1.65}}>
+              WriteHabit은 현재 베타 운영 중입니다. 기능, 화면, 데이터 구조는 안정화 과정에서 조정될 수 있습니다.
+            </div>
+          </div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', borderBottom:'1px solid var(--rule-ghost)', gap:16}}>
+            <div>
+              <div style={{fontFamily:'var(--f-kr)', fontSize:14, fontWeight:600, color:'var(--ink)'}}>문의/피드백</div>
+              <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:2}}>{CONTACT_EMAIL}</div>
+            </div>
+            <a className="btn sm ghost" href={CONTACT_MAILTO} style={{textDecoration:'none'}}>메일 보내기</a>
+          </div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', borderBottom:'1px solid var(--rule-ghost)', gap:16}}>
+            <div>
+              <div style={{fontFamily:'var(--f-kr)', fontSize:14, fontWeight:600, color:'var(--ink)'}}>비밀번호 재설정</div>
+              <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:2}}>로그인 화면의 비밀번호 찾기에서 30분 유효한 재설정 링크를 받을 수 있습니다.</div>
+            </div>
+            <a className="btn sm ghost" href={PASSWORD_RESET_HELP_MAILTO} style={{textDecoration:'none'}}>도움 요청</a>
+          </div>
+          <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', gap:16}}>
+            <div>
+              <div style={{fontFamily:'var(--f-kr)', fontSize:14, fontWeight:600, color:'var(--ink)'}}>정책 문서</div>
+              <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:2}}>서비스 이용 전 약관과 개인정보 처리 내용을 확인할 수 있습니다.</div>
+            </div>
+            <div style={{display:'flex', gap:8, flexWrap:'wrap', justifyContent:'flex-end'}}>
+              <button className="btn sm ghost" onClick={() => onNav('terms')}>이용약관</button>
+              <button className="btn sm ghost" onClick={() => onNav('privacy')}>개인정보</button>
+            </div>
           </div>
         </section>
 

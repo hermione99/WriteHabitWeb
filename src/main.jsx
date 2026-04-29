@@ -703,7 +703,7 @@ const App = () => {
   };
 
   if (screen === 'login') {
-    return <LoginScreen onLogin={onLogin} onBrowse={() => onNav('feed')} todayKw={todayKw} stats={stats} knownHandles={[]} />;
+    return <LoginScreen onLogin={onLogin} onBrowse={() => onNav('feed')} onLegalNav={onNav} todayKw={todayKw} stats={stats} knownHandles={[]} />;
   }
 
   const commonProps = { onNav, dark, onToggleDark };
