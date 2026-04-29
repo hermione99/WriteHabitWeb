@@ -354,8 +354,8 @@ const App = () => {
 
     setBlocks(prev => {
       const next = new Set(prev);
-      if (next.has(handle)) { next.delete(handle); toast(`@${handle} 차단을 해제했습니다.`); }
-      else                  { next.add(handle);    toast(`@${handle}님의 글과 댓글이 더 이상 표시되지 않습니다.`); }
+      if (next.has(handle)) { next.delete(handle); toast('차단을 해제했습니다.'); }
+      else                  { next.add(handle);    toast('이 작가의 글과 댓글이 더 이상 표시되지 않습니다.'); }
       writeSet('wh_blocks', next);
       return next;
     });
@@ -380,8 +380,8 @@ const App = () => {
 
     setFollows(prev => {
       const next = new Set(prev);
-      if (next.has(handle)) { next.delete(handle); toast(`@${handle} 팔로우를 취소했습니다.`); }
-      else                  { next.add(handle);    toast(`@${handle} 을(를) 팔로우합니다.`); }
+      if (next.has(handle)) { next.delete(handle); toast('팔로우를 취소했습니다.'); }
+      else                  { next.add(handle);    toast('작가를 팔로우합니다.'); }
       writeSet('wh_follows', next);
       return next;
     });

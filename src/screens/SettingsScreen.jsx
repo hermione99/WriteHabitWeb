@@ -61,7 +61,7 @@ export const SettingsScreen = ({onNav, user, prefs, onUpdatePrefs, dark, onToggl
           <div style={{display:'grid', gridTemplateColumns:'140px 1fr', gap:16, padding:'14px 0', borderBottom:'1px solid var(--rule-ghost)', alignItems:'center'}}>
             <div className="label" style={{fontSize:10}}>닉네임</div>
             <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', gap:12}}>
-              <span style={{fontFamily:'var(--f-kr)', fontSize:14, color:'var(--ink)'}}>{user?.nickname || '—'} <span className="meta" style={{marginLeft:6, fontSize:11}}>@{user?.handle}</span></span>
+              <span style={{fontFamily:'var(--f-kr)', fontSize:14, color:'var(--ink)'}}>{user?.nickname || '—'}</span>
               <button className="btn sm ghost" onClick={() => onNav('profile')}>변경</button>
             </div>
           </div>

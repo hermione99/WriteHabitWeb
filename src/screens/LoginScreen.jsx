@@ -28,6 +28,7 @@ export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, know
 
   /* fields */
   const [nickname, setNickname]   = useState('');
+  const [handle, setHandle]       = useState('');
   const [email, setEmail]         = useState('');
   const [pass, setPass]           = useState('');
   const [passConfirm, setPassCfm] = useState('');
@@ -58,25 +59,24 @@ export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, know
     window.history.replaceState({}, '', window.location.pathname);
   }, []);
 
-  /* nickname → URL handle (한글 보존, 공백·특수문자만 제거) */
-  const handlePreview = sanitizeHandle(nickname);
+  const handlePreview = sanitizeHandle(handle);
 
-  /* nickname uniqueness check (debounced) */
-  const [nickStatus, setNickStatus] = useState('idle'); // 'idle'|'checking'|'ok'|'taken'|'invalid'|'reserved'
+  /* handle uniqueness check (debounced) */
+  const [handleStatus, setHandleStatus] = useState('idle'); // 'idle'|'checking'|'ok'|'taken'|'invalid'|'reserved'
   useEffect(() => {
     if (mode !== 'signup') return;
-    if (!handlePreview || handlePreview.length < 2) { setNickStatus('idle'); return; }
-    setNickStatus('checking');
+    if (!handlePreview || handlePreview.length < 3) { setHandleStatus('idle'); return; }
+    setHandleStatus('checking');
     let cancelled = false;
     const id = setTimeout(async () => {
       try {
         const result = await checkHandleAvailability(handlePreview);
         if (!cancelled) {
-          setNickStatus(result.available ? 'ok' : result.reason || 'taken');
+          setHandleStatus(result.available ? 'ok' : result.reason || 'taken');
         }
       } catch {
         const fallback = await checkLocalHandleAvailable(handlePreview, undefined, knownHandles);
-        if (!cancelled) setNickStatus(fallback);
+        if (!cancelled) setHandleStatus(fallback);
       }
     }, 350);
     return () => { cancelled = true; clearTimeout(id); };
@@ -92,11 +92,15 @@ export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, know
       if (!n)                        e.nickname = '닉네임을 입력해주세요.';
       else if (n.length < 2)         e.nickname = '닉네임은 2자 이상이어야 합니다.';
       else if (n.length > 20)        e.nickname = '닉네임은 20자 이하여야 합니다.';
-      else if (!handlePreview)       e.nickname = '한글·영문·숫자를 포함해주세요.';
-      else if (nickStatus === 'taken')   e.nickname = '이미 사용 중인 닉네임입니다.';
-      else if (nickStatus === 'reserved') e.nickname = '예약된 닉네임입니다.';
-      else if (nickStatus === 'invalid') e.nickname = '사용할 수 없는 닉네임입니다.';
-      else if (nickStatus === 'checking') e.nickname = '닉네임 확인 중입니다…';
+
+      if (!handlePreview)            e.handle = '핸들을 입력해주세요.';
+      else if (handlePreview.length < 3) e.handle = '핸들은 3자 이상이어야 합니다.';
+      else if (handlePreview.length > 20) e.handle = '핸들은 20자 이하여야 합니다.';
+      else if (!/^[a-z][a-z0-9_]*$/.test(handlePreview)) e.handle = '핸들은 영문 소문자로 시작해야 합니다.';
+      else if (handleStatus === 'taken')   e.handle = '이미 사용 중인 핸들입니다.';
+      else if (handleStatus === 'reserved') e.handle = '예약된 핸들입니다.';
+      else if (handleStatus === 'invalid') e.handle = '사용할 수 없는 핸들입니다.';
+      else if (handleStatus === 'checking') e.handle = '핸들 확인 중입니다…';
     }
 
     if (!email.trim())               e.email = '이메일을 입력해주세요.';
@@ -349,40 +353,51 @@ export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, know
                     err={errors.nickname}
                     onClearError={() => clearErr('nickname')} />
                   <div style={{
+                    margin:'-12px 0 18px', fontSize:11, color:'var(--ink-mute)',
+                    fontFamily:'var(--f-mono)',
+                  }}>
+                    글과 댓글에는 닉네임만 표시됩니다.
+                  </div>
+                  <LoginField id="handle" label="02 · 핸들"
+                    value={handle} onChange={e=>setHandle(e.target.value)}
+                    placeholder="예) moonchild, dawn_writer"
+                    err={errors.handle}
+                    onClearError={() => clearErr('handle')} />
+                  <div style={{
                     margin:'-12px 0 18px', display:'flex', justifyContent:'space-between',
                     alignItems:'center', gap:8, fontSize:11, color:'var(--ink-mute)',
                     fontFamily:'var(--f-mono)',
                   }}>
                     <span>
-                      {nickStatus === 'checking' && handlePreview ? '닉네임 확인 중…'
-                       : nickStatus === 'taken'  ? <span style={{color:'#c0392b'}}>이미 사용 중인 닉네임입니다.</span>
-                       : nickStatus === 'reserved' ? <span style={{color:'#c0392b'}}>예약된 닉네임입니다.</span>
-                       : nickStatus === 'invalid' ? <span style={{color:'#c0392b'}}>사용할 수 없는 닉네임입니다.</span>
-                       : nickStatus === 'ok'     ? <span style={{color:'var(--accent)'}}>사용 가능한 닉네임입니다 ✓</span>
-                       : '본명이 아니어도 좋아요. 글에 작가 이름으로 표시됩니다.'}
+                      {handleStatus === 'checking' && handlePreview ? '핸들 확인 중…'
+                       : handleStatus === 'taken'  ? <span style={{color:'#c0392b'}}>이미 사용 중인 핸들입니다.</span>
+                       : handleStatus === 'reserved' ? <span style={{color:'#c0392b'}}>예약된 핸들입니다.</span>
+                       : handleStatus === 'invalid' ? <span style={{color:'#c0392b'}}>영문 소문자로 시작하고 영문/숫자/_만 사용할 수 있습니다.</span>
+                       : handleStatus === 'ok'     ? <span style={{color:'var(--accent)'}}>사용 가능한 핸들입니다 ✓</span>
+                       : '프로필 주소와 공유 링크에만 사용됩니다.'}
                     </span>
                     {handlePreview && (
                       <span style={{
                         whiteSpace:'nowrap',
-                        color: ['taken', 'reserved', 'invalid'].includes(nickStatus) ? '#c0392b'
-                             : nickStatus === 'ok'    ? 'var(--accent)'
+                        color: ['taken', 'reserved', 'invalid'].includes(handleStatus) ? '#c0392b'
+                             : handleStatus === 'ok'    ? 'var(--accent)'
                              : 'var(--ink-mute)',
                       }}>@{handlePreview}</span>
                     )}
                   </div>
                 </>
               )}
-              <LoginField id="email" label={mode==='signup' ? '02 · 이메일' : '01 · EMAIL'} type="email"
+              <LoginField id="email" label={mode==='signup' ? '03 · 이메일' : '01 · EMAIL'} type="email"
                 value={email} onChange={e=>setEmail(e.target.value)}
                 placeholder="your@email.com" err={errors.email}
                 onClearError={() => clearErr('email')} />
-              <LoginField id="pass" label={mode==='signup' ? '03 · 비밀번호' : '02 · PASSWORD'} type="password"
+              <LoginField id="pass" label={mode==='signup' ? '04 · 비밀번호' : '02 · PASSWORD'} type="password"
                 value={pass} onChange={e=>setPass(e.target.value)}
                 placeholder={mode==='signup' ? '8자 이상' : '비밀번호'} err={errors.pass}
                 autoComplete={mode==='signup' ? 'new-password' : 'current-password'}
                 onClearError={() => clearErr('pass')} />
               {mode==='signup' && (
-                <LoginField id="passConfirm" label="04 · 비밀번호 확인" type="password"
+                <LoginField id="passConfirm" label="05 · 비밀번호 확인" type="password"
                   value={passConfirm} onChange={e=>setPassCfm(e.target.value)}
                   placeholder="비밀번호 재입력" err={errors.passConfirm}
                   autoComplete="new-password"

@@ -18,7 +18,7 @@ const RESERVED_HANDLES = new Set([
 ]);
 
 export const sanitizeHandle = (value) =>
-  (value || '').toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9가-힣ㄱ-ㅎㅏ-ㅣ]/g, '');
+  (value || '').toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/_+/g, '_');
 
 const collectTakenHandles = (knownHandles = []) => {
   const set = new Set(RESERVED_HANDLES);

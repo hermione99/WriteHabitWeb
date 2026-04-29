@@ -16,9 +16,9 @@ const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 const handleSchema = z
   .string()
   .trim()
-  .min(2)
-  .max(24)
-  .regex(/^[a-z0-9가-힣ㄱ-ㅎㅏ-ㅣ]+$/);
+  .min(3)
+  .max(20)
+  .regex(/^[a-z][a-z0-9_]*$/);
 
 const registerSchema = z.object({
   email: z.string().trim().email().max(255),

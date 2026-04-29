@@ -289,7 +289,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
               onClick={() => onNav('profile', p)} />
             <div style={{flex:1}}>
               <div style={{fontFamily:'var(--f-kr)', fontWeight:600, fontSize:14}}>
-                {p.author} <span style={{color:'var(--ink-mute)', fontWeight:400, marginLeft:6}}>@{p.handle}</span>
+                {p.author}
               </div>
               <div className="meta" style={{fontSize:11, marginTop:2}}>
                 2026·04·23 · 14:32 · 읽기 {p.read}
@@ -315,7 +315,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                   }} onClick={e => e.stopPropagation()}>
                     <button onClick={openReportPost} style={{display:'block', width:'100%', textAlign:'left', padding:'10px 14px', background:'none', border:'none', fontFamily:'var(--f-kr)', fontSize:13, color:'var(--ink-soft)', cursor:'pointer'}}>이 글 신고</button>
                     <button onClick={handleBlockAuthor} style={{display:'block', width:'100%', textAlign:'left', padding:'10px 14px', background:'none', border:'none', fontFamily:'var(--f-kr)', fontSize:13, color:'var(--accent)', cursor:'pointer', borderTop:'1px solid var(--rule-ghost)'}}>
-                      {isBlocked ? '차단 해제' : `@${p.handle} 차단`}
+                      {isBlocked ? '차단 해제' : `${p.author} 차단`}
                     </button>
                   </div>
                 )}
@@ -453,7 +453,6 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
                 style={{cursor:'pointer'}} onClick={() => onNav('profile', p)} />
               <div>
                 <div style={{fontWeight:600, fontSize:14}}>{p.author}</div>
-                <div className="meta" style={{fontSize:10.5}}>@{p.handle}</div>
               </div>
             </div>
             <p style={{fontSize:12.5, color:'var(--ink-mute)', lineHeight:1.6, margin:'12px 0'}}>

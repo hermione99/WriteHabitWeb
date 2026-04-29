@@ -13,9 +13,9 @@ const profileSchema = z.object({
   handle: z
     .string()
     .trim()
-    .min(2)
-    .max(24)
-    .regex(/^[a-z0-9가-힣ㄱ-ㅎㅏ-ㅣ]+$/)
+    .min(3)
+    .max(20)
+    .regex(/^[a-z][a-z0-9_]*$/)
     .optional(),
   bio: z.string().trim().max(120).optional().nullable(),
   avatarUrl: z.string().trim().url().max(1000).optional().nullable(),

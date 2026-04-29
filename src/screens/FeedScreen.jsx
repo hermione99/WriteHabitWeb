@@ -215,8 +215,6 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
                     onClick={e => { e.stopPropagation(); onNav('profile', p); }} />
                   <span className="author" style={{cursor:'pointer'}} onClick={e => { e.stopPropagation(); onNav('profile', p); }}>{p.author}</span>
                   <span className="sep">·</span>
-                  <span>@{p.handle}</span>
-                  <span className="sep">·</span>
                   <span>{p.time}</span>
                   <span className="sep">·</span>
                   <span>읽기 {p.read}</span>
@@ -254,7 +252,7 @@ export const FeedScreen = ({onNav, posts, onToggleLike, onToggleBookmark, blocks
                     <button onClick={() => { setOpenMenuId(null); setReportTarget({type:'post', id:p.id, handle:p.handle, label:`${p.author}님의 "${p.title}"`}); }}
                       style={{display:'block', width:'100%', textAlign:'left', padding:'10px 14px', background:'none', border:'none', fontFamily:'var(--f-kr)', fontSize:13, color:'var(--ink-soft)', cursor:'pointer'}}>이 글 신고</button>
                     <button onClick={() => { setOpenMenuId(null); if (window.confirm(`${p.author}님을 차단하시겠어요?`)) onBlockAuthor(p.handle); }}
-                      style={{display:'block', width:'100%', textAlign:'left', padding:'10px 14px', background:'none', border:'none', fontFamily:'var(--f-kr)', fontSize:13, color:'var(--accent)', cursor:'pointer', borderTop:'1px solid var(--rule-ghost)'}}>@{p.handle} 차단</button>
+                      style={{display:'block', width:'100%', textAlign:'left', padding:'10px 14px', background:'none', border:'none', fontFamily:'var(--f-kr)', fontSize:13, color:'var(--accent)', cursor:'pointer', borderTop:'1px solid var(--rule-ghost)'}}>{p.author} 차단</button>
                   </div>
                 )}
               </div>

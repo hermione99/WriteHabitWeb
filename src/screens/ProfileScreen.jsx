@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { checkHandleAvailable, sanitizeHandle } from '../lib/handles.js';
-import { getMyProfile, getPublicProfile, resolveAssetUrl, uploadAvatar } from '../lib/api.js';
+import { checkHandleAvailability, getMyProfile, getPublicProfile, resolveAssetUrl, uploadAvatar } from '../lib/api.js';
 import { Avatar } from '../components/Avatar.jsx';
 import { readString } from '../lib/storage.js';
 import { useToast } from '../components/Toast.jsx';
@@ -36,8 +36,9 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
   const [streakPeriod, setStreakPeriod] = useState('30일');
   const [editing, setEditing] = useState(false);
   const [editNick, setEditNick] = useState(user?.nickname || '');
+  const [editHandle, setEditHandle] = useState(user?.handle || '');
   const [editBio,  setEditBio]  = useState(user?.bio || '');
-  const [editNickStatus, setEditNickStatus] = useState('ok');
+  const [editHandleStatus, setEditHandleStatus] = useState('ok');
   const [editAvatarUrl, setEditAvatarUrl] = useState(user?.avatarUrl || '');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarFileRef = useRef(null);
@@ -63,22 +64,27 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     return () => { cancelled = true; };
   }, [isOwnProfile, viewUser?.handle, user?.handle, user?.updatedAt]);
 
-  const editHandlePreview = sanitizeHandle(editNick);
+  const editHandlePreview = sanitizeHandle(editHandle);
 
   useEffect(() => {
     if (!editing) return;
-    if (!editHandlePreview || editHandlePreview.length < 2) { setEditNickStatus('idle'); return; }
-    if (editHandlePreview === user?.handle) { setEditNickStatus('ok'); return; }
-    setEditNickStatus('checking');
+    if (!editHandlePreview || editHandlePreview.length < 3) { setEditHandleStatus('idle'); return; }
+    if (editHandlePreview === user?.handle) { setEditHandleStatus('ok'); return; }
+    setEditHandleStatus('checking');
     let cancelled = false;
     const id = setTimeout(async () => {
-      const knownHandles = [
-        ...posts.map(p => p.handle),
-        ...(remoteProfile?.followers || []).map(u => u.handle),
-        ...(remoteProfile?.following || []).map(u => u.handle),
-      ];
-      const r = await checkHandleAvailable(editHandlePreview, user?.handle, knownHandles);
-      if (!cancelled) setEditNickStatus(r);
+      try {
+        const result = await checkHandleAvailability(editHandlePreview);
+        if (!cancelled) setEditHandleStatus(result.available ? 'ok' : result.reason || 'taken');
+      } catch {
+        const knownHandles = [
+          ...posts.map(p => p.handle),
+          ...(remoteProfile?.followers || []).map(u => u.handle),
+          ...(remoteProfile?.following || []).map(u => u.handle),
+        ];
+        const r = await checkHandleAvailable(editHandlePreview, user?.handle, knownHandles);
+        if (!cancelled) setEditHandleStatus(r);
+      }
     }, 350);
     return () => { cancelled = true; clearTimeout(id); };
   }, [editHandlePreview, editing, user?.handle, posts, remoteProfile?.followers, remoteProfile?.following]);
@@ -103,6 +109,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
 
   const openEdit = () => {
     setEditNick(user?.nickname || '');
+    setEditHandle(user?.handle || '');
     setEditBio(user?.bio || '');
     setEditAvatarUrl(user?.avatarUrl || '');
     setEditing(true);
@@ -134,9 +141,15 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     if (nn.length < 2)    { toast('닉네임은 2자 이상이어야 합니다.', 'error'); return; }
     if (nn.length > 20)   { toast('닉네임은 20자 이하여야 합니다.', 'error'); return; }
     if (editBio.length > 80) { toast('소개는 80자 이하여야 합니다.', 'error'); return; }
-    if (editNickStatus === 'taken')    { toast('이미 사용 중인 닉네임입니다.', 'error'); return; }
-    if (editNickStatus === 'checking') { toast('닉네임 확인이 끝나고 다시 시도해주세요.', 'error'); return; }
-    const newHandle = sanitizeHandle(nn) || 'user';
+    if (!editHandlePreview) { toast('핸들을 입력해주세요.', 'error'); return; }
+    if (editHandlePreview.length < 3) { toast('핸들은 3자 이상이어야 합니다.', 'error'); return; }
+    if (editHandlePreview.length > 20) { toast('핸들은 20자 이하여야 합니다.', 'error'); return; }
+    if (!/^[a-z][a-z0-9_]*$/.test(editHandlePreview)) { toast('핸들은 영문 소문자로 시작해야 합니다.', 'error'); return; }
+    if (editHandleStatus === 'taken')    { toast('이미 사용 중인 핸들입니다.', 'error'); return; }
+    if (editHandleStatus === 'reserved') { toast('예약된 핸들입니다.', 'error'); return; }
+    if (editHandleStatus === 'invalid')  { toast('사용할 수 없는 핸들입니다.', 'error'); return; }
+    if (editHandleStatus === 'checking') { toast('핸들 확인이 끝나고 다시 시도해주세요.', 'error'); return; }
+    const newHandle = editHandlePreview;
     try {
       await onUpdateUser({ nickname: nn, handle: newHandle, bio: editBio.trim(), avatarUrl: editAvatarUrl || null });
       setEditing(false);
@@ -240,7 +253,6 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
           <div style={{minWidth:0, flex:1, cursor:'pointer'}}
             onClick={() => onNav('profile', { handle:u.handle, author:u.name, initial:u.initial || u.name[0], avatarUrl:u.avatarUrl, bio:u.bio })}>
             <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:15, color:'var(--ink)'}}>{u.name}</div>
-            <div className="meta" style={{fontSize:10.5, marginTop:2}}>@{u.handle}</div>
             <div style={{fontSize:12, color:'var(--ink-mute)', marginTop:4}}>{u.bio}</div>
           </div>
           {opts.unfollow && (
@@ -273,7 +285,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
               ? renderUserList((followingList.length ? followingList : [...follows].map(h => {
                   const fromPost = posts.find(p => p.handle === h);
                   if (fromPost) return { name: fromPost.author, handle: h, avatarUrl: fromPost.avatarUrl, bio: '글로 만난 작가입니다.' };
-                  return { name: `@${h}`, handle: h, avatarUrl: null, bio: '' };
+                  return { name: '팔로우한 작가', handle: h, avatarUrl: null, bio: '' };
                 })).map(profileToUserListItem), { unfollow: true })
               : (
                 <div style={{padding:'56px 0', textAlign:'center'}}>
@@ -294,14 +306,13 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
                 <div>
                   {[...blocks].map(h => {
                     const post = posts.find(p => p.handle === h);
-                    const display = post ? { name: post.author, handle: h, avatarUrl: post.avatarUrl, bio: '차단된 작가입니다.' } : { name: `@${h}`, handle: h, avatarUrl: null, bio: '차단된 작가입니다.' };
+                    const display = post ? { name: post.author, handle: h, avatarUrl: post.avatarUrl, bio: '차단된 작가입니다.' } : { name: '차단한 작가', handle: h, avatarUrl: null, bio: '차단된 작가입니다.' };
                     return (
                       <div key={h} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'14px 0', borderBottom:'1px solid var(--rule-ghost)'}}>
                         <div style={{display:'flex', gap:14, alignItems:'center'}}>
                           <Avatar url={display.avatarUrl} initial={display.name[0]} size={36} fontSize={14} />
                           <div>
                             <div style={{fontFamily:'var(--f-kr)', fontWeight:600, fontSize:14, color:'var(--ink)'}}>{display.name}</div>
-                            <div className="meta" style={{fontSize:10.5, marginTop:2}}>@{h}</div>
                           </div>
                         </div>
                         <button className="btn sm" onClick={() => onBlockAuthor(h)}>차단 해제</button>
@@ -337,8 +348,6 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
               <div className="eyebrow" style={{marginBottom:8}}>{formatJoinDate(profileUser.createdAt)}</div>
               <h1 style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:44, letterSpacing:'-0.02em', lineHeight:1, margin:0, color:'var(--ink)'}}>{name}</h1>
               <div style={{marginTop:8, display:'flex', gap:12, alignItems:'center', color:'var(--ink-mute)', fontSize:13}}>
-                <span className="meta">@{handle}</span>
-                <span style={{opacity:0.4}}>/</span>
                 <span>{bio}</span>
               </div>
             </div>
@@ -395,23 +404,34 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
                 <div className="label" style={{fontSize:10, marginBottom:6}}>01 · 닉네임</div>
                 <input className="field" value={editNick} onChange={e => setEditNick(e.target.value)} maxLength={20} autoFocus />
                 <div style={{display:'flex', justifyContent:'space-between', marginTop:4, gap:8, fontFamily:'var(--f-mono)', fontSize:10}}>
-                  <span style={{
-                    color: editNickStatus === 'taken' ? '#c0392b'
-                         : editNickStatus === 'ok' && editHandlePreview && editHandlePreview !== user?.handle ? 'var(--accent)'
-                         : 'var(--ink-mute)',
-                  }}>
-                    {editNickStatus === 'checking' ? '닉네임 확인 중…'
-                     : editNickStatus === 'taken'  ? '이미 사용 중인 닉네임입니다.'
-                     : editHandlePreview && editHandlePreview === user?.handle ? '현재 사용 중인 닉네임'
-                     : editNickStatus === 'ok' && editHandlePreview ? `사용 가능 · @${editHandlePreview}`
-                     : ''}
-                  </span>
+                  <span style={{color:'var(--ink-mute)'}}>글과 댓글에는 닉네임만 표시됩니다.</span>
                   <span className="meta" style={{fontSize:10}}>{editNick.length} / 20</span>
                 </div>
               </div>
 
+              <div style={{marginBottom:18}}>
+                <div className="label" style={{fontSize:10, marginBottom:6}}>02 · 핸들</div>
+                <input className="field" value={editHandle} onChange={e => setEditHandle(e.target.value)} maxLength={20} />
+                <div style={{display:'flex', justifyContent:'space-between', marginTop:4, gap:8, fontFamily:'var(--f-mono)', fontSize:10}}>
+                  <span style={{
+                    color: ['taken', 'reserved', 'invalid'].includes(editHandleStatus) ? '#c0392b'
+                         : editHandleStatus === 'ok' && editHandlePreview ? 'var(--accent)'
+                         : 'var(--ink-mute)',
+                  }}>
+                    {editHandleStatus === 'checking' ? '핸들 확인 중…'
+                     : editHandleStatus === 'taken'  ? '이미 사용 중인 핸들입니다.'
+                     : editHandleStatus === 'reserved' ? '예약된 핸들입니다.'
+                     : editHandleStatus === 'invalid' ? '사용할 수 없는 핸들입니다.'
+                     : editHandlePreview && editHandlePreview === user?.handle ? `현재 핸들 · @${editHandlePreview}`
+                     : editHandleStatus === 'ok' && editHandlePreview ? `사용 가능 · @${editHandlePreview}`
+                     : '영문 소문자로 시작, 영문/숫자/_ 사용'}
+                  </span>
+                  <span className="meta" style={{fontSize:10}}>{editHandlePreview.length} / 20</span>
+                </div>
+              </div>
+
               <div style={{marginBottom:24}}>
-                <div className="label" style={{fontSize:10, marginBottom:6}}>02 · 한 줄 소개</div>
+                <div className="label" style={{fontSize:10, marginBottom:6}}>03 · 한 줄 소개</div>
                 <textarea
                   value={editBio}
                   onChange={e => setEditBio(e.target.value)}
