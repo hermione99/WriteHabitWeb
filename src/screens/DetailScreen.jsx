@@ -105,6 +105,10 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
 
   const handleComment = async () => {
     if (commenting || !commentText.trim()) return;
+    if (!user) {
+      toast('댓글을 남기려면 로그인이 필요합니다.', 'error');
+      return;
+    }
     const body = commentText.trim();
     const token = readString('wh_auth_token');
     const tempId = `temp-${Date.now()}`;

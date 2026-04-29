@@ -327,9 +327,17 @@ const App = () => {
     }
   };
 
+  const requireAuth = (message = '로그인이 필요한 기능입니다.') => {
+    if (user) return true;
+    toast(message);
+    setScreen('login');
+    return false;
+  };
+
   /* ── Blocks ── */
   const [blocks, setBlocks] = useState(() => readSet('wh_blocks'));
   const onBlockAuthor = async (handle) => {
+    if (!requireAuth('차단하려면 로그인이 필요합니다.')) return;
     const token = readString('wh_auth_token');
     const isBlocked = blocks.has(handle);
 
@@ -353,7 +361,9 @@ const App = () => {
     });
   };
   const [follows, setFollows] = useState(() => readSet('wh_follows'));
+
   const onToggleFollow = async (handle) => {
+    if (!requireAuth('팔로우하려면 로그인이 필요합니다.')) return;
     const token = readString('wh_auth_token');
     const isFollowing = follows.has(handle);
 
@@ -377,6 +387,7 @@ const App = () => {
     });
   };
   const onReport = async ({ targetType, targetId, targetHandle, reason, detail }) => {
+    if (!requireAuth('신고하려면 로그인이 필요합니다.')) return;
     const token = readString('wh_auth_token');
     if (token && typeof targetId === 'string') {
       try {
@@ -425,6 +436,11 @@ const App = () => {
   }, [posts, activePost, screen]);
 
   const onNav = (target, data) => {
+    if (!user && ['write', 'profile', 'settings', 'admin'].includes(target)) {
+      toast('로그인 후 사용할 수 있습니다.');
+      setScreen('login');
+      return;
+    }
     setScreen(target);
     if (target === 'feed') {
       const nextKeyword = data?.keyword || null;
@@ -456,6 +472,7 @@ const App = () => {
   };
 
   const onToggleLike = async (id) => {
+    if (!requireAuth('좋아요를 누르려면 로그인이 필요합니다.')) return;
     const current = posts.find(p => p.id === id) || activePost;
     const nextLiked = !current?.liked;
     const token = readString('wh_auth_token');
@@ -479,6 +496,7 @@ const App = () => {
   };
 
   const onToggleBookmark = async (id) => {
+    if (!requireAuth('저장하려면 로그인이 필요합니다.')) return;
     const current = posts.find(p => p.id === id) || activePost;
     const nextBookmarked = !current?.bookmarked;
     const token = readString('wh_auth_token');
@@ -685,7 +703,7 @@ const App = () => {
   };
 
   if (screen === 'login') {
-    return <LoginScreen onLogin={onLogin} todayKw={todayKw} stats={stats} knownHandles={[]} />;
+    return <LoginScreen onLogin={onLogin} onBrowse={() => onNav('feed')} todayKw={todayKw} stats={stats} knownHandles={[]} />;
   }
 
   const commonProps = { onNav, dark, onToggleDark };

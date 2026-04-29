@@ -54,6 +54,7 @@ export const TopBar = ({
             <button className="dark-toggle" onClick={onToggleDark} title="테마 전환">
               {dark ? <IconSun /> : <IconMoon />}
             </button>
+            {user && (
             <div style={{ position: 'relative' }}>
               <button
                 className="dark-toggle"
@@ -251,9 +252,17 @@ export const TopBar = ({
                 </div>
               )}
             </div>
-            <button className="btn sm solid" onClick={() => onNav('write')}>
-              글쓰기 <span className="arr">→</span>
-            </button>
+            )}
+            {user ? (
+              <button className="btn sm solid" onClick={() => onNav('write')}>
+                글쓰기 <span className="arr">→</span>
+              </button>
+            ) : (
+              <button className="btn sm solid" onClick={() => onNav('login')}>
+                로그인 <span className="arr">→</span>
+              </button>
+            )}
+            {user && (
             <div style={{ position: 'relative' }}>
               <Avatar url={user?.avatarUrl} initial={initial} size={32} fontSize={13}
                 style={{ cursor: 'pointer' }}
@@ -301,6 +310,7 @@ export const TopBar = ({
                 </div>
               )}
             </div>
+            )}
           </>
         )}
       </div>

@@ -20,7 +20,7 @@ const LoginField = ({id, label, type='text', value, onChange, placeholder, err, 
   </div>
 );
 
-export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
+export const LoginScreen = ({onLogin, onBrowse, todayKw, stats, knownHandles = []}) => {
   const toast = useToast();
 
   /* mode: 'login' | 'signup' | 'reset' | 'resetConfirm' */
@@ -406,6 +406,12 @@ export const LoginScreen = ({onLogin, todayKw, stats, knownHandles = []}) => {
                   : <>{mode==='signup'?'가입하기':'로그인'} <span className="arr">→</span></>
                 }
               </button>
+              {mode === 'login' && (
+                <button type="button" className="btn ghost" onClick={onBrowse}
+                  style={{width:'100%', justifyContent:'center', padding:'13px 20px', fontSize:13, marginTop:10}}>
+                  둘러보기 <span className="arr">→</span>
+                </button>
+              )}
 
               {mode==='login' && (
                 <p style={{marginTop:12, fontSize:11.5, color:'var(--ink-faint)', textAlign:'center', fontFamily:'var(--f-mono)'}}>
