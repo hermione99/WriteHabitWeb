@@ -55,3 +55,15 @@ export const toAdminReport = (report) => ({
   status: report.status.toLowerCase(),
   createdAt: report.createdAt,
 });
+
+export const toAdminKeywordSuggestion = (suggestion) => ({
+  id: suggestion.id,
+  word: suggestion.word,
+  eng: suggestion.eng || '',
+  note: suggestion.note || '',
+  status: suggestion.status.toLowerCase(),
+  by: suggestion.user?.displayName || suggestion.user?.handle || 'unknown',
+  handle: suggestion.user?.handle || '',
+  createdAt: suggestion.createdAt,
+  reviewedAt: suggestion.reviewedAt,
+});

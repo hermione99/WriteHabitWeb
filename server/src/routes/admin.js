@@ -4,7 +4,7 @@ import { authenticate } from '../middleware/authenticate.js';
 import { requireAdmin } from '../middleware/requireAdmin.js';
 import { badRequest, conflict } from '../lib/httpError.js';
 import { recommendKeywords } from '../lib/keywordRecommendations.js';
-import { toAdminReport, toScheduleRow } from '../lib/adminDto.js';
+import { toAdminKeywordSuggestion, toAdminReport, toScheduleRow } from '../lib/adminDto.js';
 import { prisma } from '../lib/prisma.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -19,6 +19,10 @@ const keywordScheduleSchema = z.object({
 
 const reportStatusSchema = z.object({
   status: z.enum(['open', 'reviewing', 'resolved', 'dismissed']),
+});
+
+const suggestionStatusSchema = z.object({
+  status: z.enum(['pending', 'approved', 'rejected']),
 });
 
 const recommendationsQuerySchema = z.object({
@@ -111,6 +115,60 @@ adminRouter.get('/admin/keywords/recommendations', async (req, res, next) => {
         count: query.count,
         existingSchedules: schedules,
       }),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.get('/admin/keywords/suggestions', async (_req, res, next) => {
+  try {
+    const suggestions = await prisma.keywordSuggestion.findMany({
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 100,
+      include: {
+        user: {
+          select: {
+            displayName: true,
+            handle: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      suggestions: suggestions.map(toAdminKeywordSuggestion),
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.patch('/admin/keywords/suggestions/:id', async (req, res, next) => {
+  try {
+    const body = parseBody(suggestionStatusSchema, req.body);
+    const suggestion = await prisma.keywordSuggestion.update({
+      where: {
+        id: req.params.id,
+      },
+      data: {
+        status: body.status.toUpperCase(),
+        reviewedAt: new Date(),
+      },
+      include: {
+        user: {
+          select: {
+            displayName: true,
+            handle: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      suggestion: toAdminKeywordSuggestion(suggestion),
     });
   } catch (error) {
     next(error);

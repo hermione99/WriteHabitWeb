@@ -266,6 +266,15 @@ export const listKeywordArchive = () => request('/keywords/archive');
 
 export const listUpcomingKeywords = () => request('/keywords/upcoming');
 
+export const createKeywordSuggestion = ({ word, eng, note, token }) =>
+  request('/keywords/suggestions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ word, eng, note }),
+  });
+
 export const getMyStreak = ({ year, month, token }) => {
   const params = new URLSearchParams();
   if (year) params.set('year', year);
@@ -361,6 +370,22 @@ export const listAdminKeywordRecommendations = ({ count = 7, token }) =>
     headers: {
       Authorization: `Bearer ${token}`,
     },
+  });
+
+export const listAdminKeywordSuggestions = (token) =>
+  request('/admin/keywords/suggestions', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+export const updateAdminKeywordSuggestion = ({ id, status, token }) =>
+  request(`/admin/keywords/suggestions/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status }),
   });
 
 export const createAdminKeywordSchedule = ({ date, word, eng, prompt, status, token }) =>

@@ -3,7 +3,16 @@ import { Avatar } from '../components/Avatar.jsx';
 import { IconMoon, IconSun } from '../components/Icons.jsx';
 import { TopBar } from '../components/TopBar.jsx';
 import { useToast } from '../components/Toast.jsx';
-import { createAdminKeywordSchedule, listAdminKeywordRecommendations, listAdminKeywordSchedule, listAdminReports, updateAdminKeywordSchedule, updateAdminReport } from '../lib/api.js';
+import {
+  createAdminKeywordSchedule,
+  listAdminKeywordRecommendations,
+  listAdminKeywordSchedule,
+  listAdminKeywordSuggestions,
+  listAdminReports,
+  updateAdminKeywordSchedule,
+  updateAdminKeywordSuggestion,
+  updateAdminReport,
+} from '../lib/api.js';
 import { readString } from '../lib/storage.js';
 
 const statusMeta = {
@@ -54,6 +63,9 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout}) => {
       });
     listAdminReports(token)
       .then(({ reports: remoteReports }) => setReports(remoteReports || []))
+      .catch(() => {});
+    listAdminKeywordSuggestions(token)
+      .then(({ suggestions: remoteSuggestions }) => setSuggestions(remoteSuggestions || []))
       .catch(() => {});
   }, []);
 
@@ -232,18 +244,34 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout}) => {
     setSchedule(s => s.map((r, ri) => ri === i ? {...r, word: val} : r));
   };
 
-  const handleApprove = (idx) => {
-    const s = suggestions[idx];
-    setNewWord(s.w);
-    setSuggestions(arr => arr.filter((_,i) => i !== idx));
-    toast(`${s.w} — 폼에 불러왔습니다. 날짜를 지정해 예약하세요.`);
+  const handleApprove = async (s) => {
+    if (!s) return;
+    const token = readString('wh_auth_token');
+    if (!token) return;
+    try {
+      const { suggestion } = await updateAdminKeywordSuggestion({ id: s.id, status: 'approved', token });
+      setNewWord(s.word);
+      setNewEng(s.eng || '');
+      setNewPrompt(s.note ? `유저 제안: ${s.note}` : '');
+      setSuggestions(arr => arr.map((item) => item.id === s.id ? suggestion : item));
+      toast(`${s.word} — 폼에 불러왔습니다. 날짜를 지정해 예약하세요.`);
+    } catch (error) {
+      toast(error.message || '제안 승인에 실패했습니다.', 'error');
+    }
     suggestRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleReject = (idx) => {
-    const s = suggestions[idx];
-    setSuggestions(arr => arr.filter((_,i) => i !== idx));
-    toast(`${s.w} — 제안을 반려했습니다.`);
+  const handleReject = async (s) => {
+    if (!s) return;
+    const token = readString('wh_auth_token');
+    if (!token) return;
+    try {
+      const { suggestion } = await updateAdminKeywordSuggestion({ id: s.id, status: 'rejected', token });
+      setSuggestions(arr => arr.map((item) => item.id === s.id ? suggestion : item));
+      toast(`${s.word} — 제안을 반려했습니다.`);
+    } catch (error) {
+      toast(error.message || '제안 반려에 실패했습니다.', 'error');
+    }
   };
 
   const handleReportStatus = async (report, nextStatus) => {
@@ -283,11 +311,13 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout}) => {
   const filteredReports = reportFilter === 'all'
     ? reports
     : reports.filter(r => r.status === reportFilter);
+  const pendingSuggestions = suggestions.filter(s => s.status === 'pending');
   const reportCounts = reports.reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, {});
   const adminStats = [
     ['예약된 키워드', String(schedule.filter(r=>r.status==='scheduled'||r.status==='draft').length), '일치'],
     ['미배정 슬롯', String(schedule.filter(r=>r.status==='empty').length), '일'],
     ['AI 검수 대기', String(aiDrafts.length), '건'],
+    ['유저 제안', String(pendingSuggestions.length), '건'],
     ['신고 대기', String((reportCounts.open || 0) + (reportCounts.reviewing || 0)), '건'],
     ['다음 발행까지', getNextPublishLabel(schedule), ''],
   ];
@@ -321,7 +351,7 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout}) => {
           </div>
         </div>
 
-        <section style={{display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:40, padding:'22px 0', borderBottom:'1px solid var(--rule-soft)'}}>
+        <section style={{display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:32, padding:'22px 0', borderBottom:'1px solid var(--rule-soft)'}}>
           {adminStats.map(([k,v,s]) => (
             <div key={k}>
               <div className="label" style={{fontSize:10, marginBottom:6}}>{k}</div>
@@ -462,19 +492,26 @@ export const AdminScreen = ({onNav, dark, onToggleDark, user, onLogout}) => {
             </div>
 
             <div className="panel">
-              <h4>유저 제안 대기 · {suggestions.length}</h4>
-              {suggestions.length === 0 && (
+              <h4>유저 제안 대기 · {pendingSuggestions.length}</h4>
+              {pendingSuggestions.length === 0 && (
                 <div style={{padding:'16px 0', textAlign:'center', color:'var(--ink-mute)', fontFamily:'var(--f-mono)', fontSize:11}}>대기 중인 제안이 없습니다.</div>
               )}
-              {suggestions.map((s,i) => (
-                <div key={i} style={{display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', borderBottom:'1px solid var(--rule-ghost)'}}>
+              {pendingSuggestions.map((s) => (
+                <div key={s.id} style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, padding:'10px 0', borderBottom:'1px solid var(--rule-ghost)'}}>
                   <div>
-                    <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:15, color:'var(--ink)'}}>{s.w}</div>
-                    <div className="meta" style={{fontSize:10.5}}>{s.by} · ♥ {s.v}</div>
+                    <div style={{fontFamily:'var(--f-kr-serif)', fontWeight:700, fontSize:15, color:'var(--ink)'}}>{s.word}</div>
+                    <div className="meta" style={{fontSize:10.5}}>
+                      {s.by}{s.handle ? ` · @${s.handle}` : ''}{s.eng ? ` · ${s.eng}` : ''}
+                    </div>
+                    {s.note && (
+                      <div style={{fontSize:11.5, color:'var(--ink-mute)', lineHeight:1.5, marginTop:4, maxWidth:210}}>
+                        {s.note}
+                      </div>
+                    )}
                   </div>
                   <div style={{display:'flex', gap:4}}>
-                    <button className="btn sm ghost" style={{padding:'4px 8px', fontSize:10, color:'var(--accent)'}} onClick={() => handleApprove(i)}>✓</button>
-                    <button className="btn sm ghost" style={{padding:'4px 8px', fontSize:10}} onClick={() => handleReject(i)}>✕</button>
+                    <button className="btn sm ghost" style={{padding:'4px 8px', fontSize:10, color:'var(--accent)'}} onClick={() => handleApprove(s)}>✓</button>
+                    <button className="btn sm ghost" style={{padding:'4px 8px', fontSize:10}} onClick={() => handleReject(s)}>✕</button>
                   </div>
                 </div>
               ))}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useToast } from '../components/Toast.jsx';
-import { getMyStreak } from '../lib/api.js';
+import { createKeywordSuggestion, getMyStreak } from '../lib/api.js';
 import { readString } from '../lib/storage.js';
 
 const formatMonthDay = (date) => {
@@ -30,6 +30,10 @@ export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
   const [yearOpen, setYearOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
   const [streak, setStreak] = useState(null);
+  const [suggestWord, setSuggestWord] = useState('');
+  const [suggestEng, setSuggestEng] = useState('');
+  const [suggestNote, setSuggestNote] = useState('');
+  const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
     if (years.length && !years.includes(filterYear)) setFilterYear(years[0]);
@@ -116,6 +120,37 @@ export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
     }
     toast(`${day.keyword.word} — 글 목록으로 이동합니다`);
     onNav('feed', { keyword: day.keyword });
+  };
+
+  const handleSuggestKeyword = async (event) => {
+    event.preventDefault();
+    const token = readString('wh_auth_token');
+    if (!token) {
+      toast('키워드를 제안하려면 로그인이 필요합니다.');
+      onNav('login');
+      return;
+    }
+    if (!suggestWord.trim()) {
+      toast('제안할 키워드를 입력해주세요.');
+      return;
+    }
+    setSuggesting(true);
+    try {
+      await createKeywordSuggestion({
+        word: suggestWord.trim(),
+        eng: suggestEng.trim(),
+        note: suggestNote.trim(),
+        token,
+      });
+      setSuggestWord('');
+      setSuggestEng('');
+      setSuggestNote('');
+      toast('키워드 제안을 보냈습니다. 운영팀이 검토할게요.');
+    } catch (error) {
+      toast(error.message || '키워드 제안에 실패했습니다.', 'error');
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const DropFilter = ({label, value, open, onToggle, options, onSelect}) => (
@@ -208,6 +243,38 @@ export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
                 )}
               </div>
             </div>
+
+            <form onSubmit={handleSuggestKeyword} style={{marginTop:32, borderTop:'1px solid var(--rule-soft)', paddingTop:24}}>
+              <div className="col-h">
+                <h2>키워드 제안</h2>
+                <span className="meta">SUGGEST A WORD</span>
+              </div>
+              <p style={{fontSize:13, color:'var(--ink-mute)', lineHeight:1.65, margin:'0 0 14px'}}>
+                다음에 함께 쓰고 싶은 단어를 보내주세요. 운영팀이 검토해 오늘의 키워드 후보로 등록합니다.
+              </p>
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10}}>
+                <div>
+                  <div className="label" style={{fontSize:10, marginBottom:4}}>한글 키워드</div>
+                  <input className="field" value={suggestWord} onChange={e=>setSuggestWord(e.target.value)}
+                    maxLength={40} placeholder="예) 약속" />
+                </div>
+                <div>
+                  <div className="label" style={{fontSize:10, marginBottom:4}}>영문 표기 (선택)</div>
+                  <input className="field" value={suggestEng} onChange={e=>setSuggestEng(e.target.value)}
+                    maxLength={80} placeholder="PROMISE" />
+                </div>
+              </div>
+              <div style={{marginBottom:12}}>
+                <div className="label" style={{fontSize:10, marginBottom:4}}>제안 이유 (선택)</div>
+                <textarea className="field" value={suggestNote} onChange={e=>setSuggestNote(e.target.value)}
+                  maxLength={300} placeholder="이 단어로 어떤 글을 쓰고 싶은지 짧게 알려주세요."
+                  style={{minHeight:72, resize:'none', border:'none', borderBottom:'1px solid var(--rule-soft)', outline:'none', background:'transparent', fontFamily:'var(--f-kr)', fontSize:14, color:'var(--ink)', width:'100%'}} />
+              </div>
+              <button className="btn solid" type="submit" disabled={suggesting}
+                style={{width:'100%', justifyContent:'center', opacity:suggesting ? 0.7 : 1}}>
+                {suggesting ? '전송 중…' : '키워드 제안하기'} <span className="arr">→</span>
+              </button>
+            </form>
           </div>
 
           <div>
