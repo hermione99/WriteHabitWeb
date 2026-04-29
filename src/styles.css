@@ -324,8 +324,8 @@ body {
 }
 .editor-body {
   padding: 32px 36px; min-height: 280px;
-  font-family: var(--f-kr-serif); font-size: 17px;
-  line-height: 1.9; color: var(--ink-soft);
+  font-family: var(--f-kr-serif); font-size: 16px;
+  line-height: 1.85; color: var(--ink-soft);
   letter-spacing: -0.005em; outline: none;
   max-width: 62ch;
   margin: 0 auto;
@@ -341,13 +341,13 @@ body {
 .editor-body div:last-child {
   margin-bottom: 0;
 }
-.editor-body h1 { font-family: var(--f-kr-serif); font-size: 30px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.3; margin: 1.1em 0 0.55em; color: var(--ink); }
-.editor-body h2 { font-family: var(--f-kr-serif); font-size: 23px; font-weight: 700; letter-spacing: -0.02em;  line-height: 1.35;  margin: 1em 0 0.45em; color: var(--ink); }
+.editor-body h1 { font-family: var(--f-kr-serif); font-size: 28px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.3; margin: 1.1em 0 0.55em; color: var(--ink); }
+.editor-body h2 { font-family: var(--f-kr-serif); font-size: 21px; font-weight: 700; letter-spacing: -0.02em;  line-height: 1.35;  margin: 1em 0 0.45em; color: var(--ink); }
 .editor-body h1:first-child,
 .editor-body h2:first-child {
   margin-top: 0;
 }
-.editor-body blockquote { margin: 1.4em 0; padding: 8px 0 8px 22px; border-left: 2px solid var(--accent); font-style: italic; color: var(--ink); font-size: 17.5px; }
+.editor-body blockquote { margin: 1.4em 0; padding: 8px 0 8px 22px; border-left: 2px solid var(--accent); font-style: italic; color: var(--ink); font-size: 16.5px; }
 .editor-body blockquote p,
 .editor-body blockquote div {
   margin-bottom: 0.8em;
@@ -471,14 +471,14 @@ body {
 
 /* ── Article body ── */
 .article-body {
-  font-family: var(--f-kr-serif); font-size: 17px; line-height: 1.9;
+  font-family: var(--f-kr-serif); font-size: 16px; line-height: 1.85;
   color: var(--ink-soft); letter-spacing: -0.005em; max-width: 62ch;
 }
 .article-body p     { margin: 0 0 1.4em; }
 .article-body blockquote {
   margin: 1.6em 0; padding: 8px 0 8px 24px;
   border-left: 2px solid var(--accent);
-  font-style: italic; color: var(--ink); font-size: 17.5px;
+  font-style: italic; color: var(--ink); font-size: 16.5px;
 }
 
 /* ── Tag / status chip ── */
