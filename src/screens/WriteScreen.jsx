@@ -47,6 +47,11 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       block:  h1 ? '제목 1' : h2 ? '제목 2' : bq ? '인용구' : '본문',
     });
   };
+  useEffect(() => {
+    try {
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+    } catch {}
+  }, []);
   /* listen to selection changes anywhere → keep toolbar in sync */
   useEffect(() => {
     const onSel = () => {
@@ -180,6 +185,25 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   const execCmd = (cmd, val) => {
     document.execCommand(cmd, false, val ?? null);
     editorRef.current?.focus();
+    refreshTools();
+  };
+
+  const handlePaste = (event) => {
+    event.preventDefault();
+    const text = event.clipboardData?.getData('text/plain') || '';
+    if (!text) return;
+    const html = text
+      .split(/\n{2,}/)
+      .map((paragraph) => paragraph
+        .split(/\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .join('<br>'))
+      .filter(Boolean)
+      .map((paragraph) => `<p>${paragraph}</p>`)
+      .join('');
+    document.execCommand('insertHTML', false, html || text);
+    handleInput();
     refreshTools();
   };
 
@@ -500,7 +524,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
                   boxShadow:'0 8px 24px rgba(0,0,0,0.08)', minWidth:140,
                 }} onClick={e => e.stopPropagation()}>
                   {[
-                    ['P',          '본문',   {fontSize:14, fontFamily:'var(--f-kr)'}],
+                    ['P',          '본문',   {fontSize:14, fontFamily:'var(--f-kr-serif)'}],
                     ['H1',         '제목 1', {fontSize:18, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
                     ['H2',         '제목 2', {fontSize:16, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
                     ['BLOCKQUOTE', '인용구', {fontSize:14, fontFamily:'var(--f-kr-serif)', fontStyle:'italic', color:'var(--accent)'}],
@@ -575,6 +599,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
             suppressContentEditableWarning
             data-placeholder={`오늘의 키워드 '${todayKw.word}'에 대해 자유롭게 써보세요…`}
             onInput={() => { handleInput(); refreshTools(); }}
+            onPaste={handlePaste}
             onKeyUp={refreshTools}
             onMouseUp={refreshTools}
             onFocus={refreshTools}
