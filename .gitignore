@@ -7,5 +7,6 @@ server/.env
 server/node_modules/
 server/dist/
 /uploads/
+backups/
 server/uploads/*
 !server/uploads/.gitkeep

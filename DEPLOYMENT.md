@@ -75,7 +75,37 @@ curl https://<your-render-api-domain>/api/ready
 curl https://<your-render-api-domain>/api/keywords/today
 ```
 
-## 3. Vercel Web
+## 3. Production Backup
+
+Before inviting beta testers, confirm backup and restore options in the Neon console:
+
+- Open the Neon project.
+- Confirm whether point-in-time restore or branch restore is available on the current plan.
+- Prefer the direct database connection string for manual backups. Pooled URLs work for the app, but direct URLs are safer for maintenance jobs.
+
+Create a manual database backup before major deploys, migrations, or beta tester invites:
+
+```bash
+DATABASE_URL="postgresql://USER:PASSWORD@HOST/writehabit?sslmode=require" npm run backup:db
+```
+
+The command writes a timestamped custom-format dump to `backups/`. The folder is intentionally gitignored because dumps may contain user data.
+
+Restore drill, only against a temporary database or Neon branch:
+
+```bash
+pg_restore --clean --if-exists --no-owner --no-acl --dbname "$DATABASE_URL" backups/writehabit-YYYY-MM-DDTHH-MM-SS.dump
+```
+
+Do not run restore commands against production unless you have intentionally decided to roll back data.
+
+Current upload storage note:
+
+- Profile image uploads are stored on the Render service filesystem under `server/uploads`.
+- Render local filesystem is not a durable user-file storage strategy.
+- Before a wider beta, move uploads to external storage such as Cloudinary, S3, or Vercel Blob.
+
+## 4. Vercel Web
 
 Create a Vercel project from this repository.
 
@@ -98,7 +128,7 @@ After Vercel gives you a domain, update Render:
 CORS_ORIGIN=https://<your-vercel-domain>
 ```
 
-## 4. Smoke Test
+## 5. Smoke Test
 
 Backend:
 
