@@ -19,6 +19,7 @@ export const toPublicPost = (post, viewer = null) => {
     id: post.id,
     title: post.title,
     body: post.body,
+    bodyHtml: post.bodyHtml || null,
     author: authorName,
     handle: post.author.handle,
     initial: authorName[0] || '?',

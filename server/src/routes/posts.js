@@ -11,12 +11,14 @@ import { toPublicPost } from '../lib/postDto.js';
 const postInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().min(1).max(20000),
+  bodyHtml: z.string().max(60000).optional().nullable(),
   keywordId: z.string().optional().nullable(),
 });
 
 const draftInputSchema = z.object({
   title: z.string().trim().max(120).optional().default(''),
   body: z.string().trim().max(20000).optional().default(''),
+  bodyHtml: z.string().max(60000).optional().nullable(),
   keywordId: z.string().optional().nullable(),
 });
 
@@ -97,6 +99,7 @@ postsRouter.post('/posts/drafts', authenticate, async (req, res, next) => {
       data: {
         title: body.title || '제목 없는 초안',
         body: body.body || '',
+        bodyHtml: body.bodyHtml || null,
         authorId: req.user.id,
         keywordId: body.keywordId || null,
         status: 'DRAFT',
@@ -137,6 +140,7 @@ postsRouter.patch('/posts/drafts/:id', authenticate, async (req, res, next) => {
       data: {
         ...(body.title !== undefined ? { title: body.title || '제목 없는 초안' } : {}),
         ...(body.body !== undefined ? { body: body.body } : {}),
+        ...(body.bodyHtml !== undefined ? { bodyHtml: body.bodyHtml || null } : {}),
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
       },
       include: postCreateInclude,
@@ -170,6 +174,7 @@ postsRouter.post('/posts/drafts/:id/publish', authenticate, async (req, res, nex
 
     const title = body.title ?? existing.title;
     const content = body.body ?? existing.body;
+    const contentHtml = body.bodyHtml !== undefined ? body.bodyHtml || null : existing.bodyHtml;
     if (!title.trim() || !content.trim()) {
       throw badRequest('Title and body are required to publish');
     }
@@ -181,6 +186,7 @@ postsRouter.post('/posts/drafts/:id/publish', authenticate, async (req, res, nex
       data: {
         title,
         body: content,
+        bodyHtml: contentHtml,
         keywordId: body.keywordId !== undefined ? body.keywordId || null : existing.keywordId,
         status: 'PUBLISHED',
       },
@@ -290,6 +296,7 @@ postsRouter.post('/posts', authenticate, async (req, res, next) => {
       data: {
         title: body.title,
         body: body.body,
+        bodyHtml: body.bodyHtml || null,
         authorId: req.user.id,
         keywordId: body.keywordId || null,
       },
@@ -329,6 +336,7 @@ postsRouter.patch('/posts/:id', authenticate, async (req, res, next) => {
       data: {
         ...(body.title !== undefined ? { title: body.title } : {}),
         ...(body.body !== undefined ? { body: body.body } : {}),
+        ...(body.bodyHtml !== undefined ? { bodyHtml: body.bodyHtml || null } : {}),
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
       },
       include: postInclude,

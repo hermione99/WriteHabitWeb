@@ -75,6 +75,7 @@ model Post {
   keywordId   String?
   title       String
   body        String
+  bodyHtml    String?
   status      PostStatus  @default(PUBLISHED)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt

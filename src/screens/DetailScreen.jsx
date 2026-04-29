@@ -6,6 +6,66 @@ import { useToast } from '../components/Toast.jsx';
 import { createComment, deleteComment, listComments } from '../lib/api.js';
 import { readJSON, readString } from '../lib/storage.js';
 
+const escapeHtml = (value = '') =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const textToArticleHtml = (value = '') =>
+  value
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+    .map((paragraph) => `<p>${escapeHtml(paragraph).replace(/\n/g, '<br>')}</p>`)
+    .join('');
+
+const sanitizeArticleHtml = (html = '') => {
+  if (!html.trim() || typeof DOMParser === 'undefined') return '';
+  const allowedTags = new Set(['P', 'BR', 'H1', 'H2', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U', 'S', 'A', 'DIV']);
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, 'text/html');
+  const root = doc.body.firstElementChild;
+  if (!root) return '';
+
+  const cleanNode = (node) => {
+    [...node.childNodes].forEach((child) => {
+      if (child.nodeType === Node.TEXT_NODE) return;
+      if (child.nodeType !== Node.ELEMENT_NODE || !allowedTags.has(child.tagName)) {
+        if (['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT'].includes(child.tagName)) {
+          child.remove();
+          return;
+        }
+        child.replaceWith(...child.childNodes);
+        cleanNode(node);
+        return;
+      }
+
+      const textAlign = child.style?.textAlign;
+      const href = child.getAttribute('href') || '';
+      [...child.attributes].forEach((attr) => child.removeAttribute(attr.name));
+      if (child.tagName === 'A') {
+        if (/^https?:\/\//i.test(href) || href.startsWith('mailto:')) {
+          child.setAttribute('href', href);
+          child.setAttribute('target', '_blank');
+          child.setAttribute('rel', 'noreferrer');
+        }
+      }
+      if (['left', 'center', 'right'].includes(textAlign)) {
+        child.style.textAlign = textAlign;
+      }
+      cleanNode(child);
+    });
+  };
+
+  cleanNode(root);
+  return root.innerHTML;
+};
+
+const getArticleHtml = (post) => sanitizeArticleHtml(post.bodyHtml || '') || textToArticleHtml(post.body || '');
+
 export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark, user, onEditPost, onDeletePost, blocks, follows, onToggleFollow, onReport, onBlockAuthor, todayKw, stats}) => {
   const toast = useToast();
   const p = post || posts[0];
@@ -264,9 +324,7 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
           </div>
 
           {/* Body */}
-          <div className="article-body">
-            <p>{p.body}</p>
-          </div>
+          <div className="article-body" dangerouslySetInnerHTML={{ __html: getArticleHtml(p) }} />
 
           {/* Actions */}
           <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:44, padding:'16px 0', borderTop:'1px solid var(--rule)', borderBottom:'1px solid var(--rule)'}}>

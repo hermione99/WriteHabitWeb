@@ -519,13 +519,13 @@ const App = () => {
     applyPostPatch(id, p => ({ ...p, bookmarked: !p.bookmarked, bookmarks: p.bookmarked ? p.bookmarks - 1 : p.bookmarks + 1 }));
   };
 
-  const buildLocalPost = ({ title, body }) => {
+  const buildLocalPost = ({ title, body, bodyHtml }) => {
     const name = user?.nickname || '김민지';
     const h    = user?.handle || sanitizeHandle(name) || 'user';
     /* 한글 기준 분당 약 350자 읽기 속도 */
     const readMin = Math.max(1, Math.ceil((body || '').length / 350));
     return {
-      id: Date.now(), title, body,
+      id: Date.now(), title, body, bodyHtml: bodyHtml || null,
       author: name, handle: h,
       initial: name[0],
       time: '방금 전', read: `${readMin}분`,
@@ -533,14 +533,14 @@ const App = () => {
     };
   };
 
-  const onPublish = async ({ title, body, draftId, keywordId }) => {
+  const onPublish = async ({ title, body, bodyHtml, draftId, keywordId }) => {
     const token = readString('wh_auth_token');
     const activeKeywordId = keywordId || todayKw?.id || null;
     if (token) {
       try {
         const { post } = draftId
-          ? await publishDraft({ id: draftId, title, body, keywordId: activeKeywordId, token })
-          : await createPost({ title, body, keywordId: activeKeywordId, token });
+          ? await publishDraft({ id: draftId, title, body, bodyHtml, keywordId: activeKeywordId, token })
+          : await createPost({ title, body, bodyHtml, keywordId: activeKeywordId, token });
         setPosts(ps => [post, ...ps.filter(p => p.id !== post.id)]);
         if (draftId) setDrafts(prev => prev.filter(d => d.id !== draftId));
         return post;
@@ -553,7 +553,7 @@ const App = () => {
       }
     }
 
-    const newPost = buildLocalPost({ title, body });
+    const newPost = buildLocalPost({ title, body, bodyHtml });
     newPost.keywordId = activeKeywordId;
     newPost.keyword = todayKw?.id === activeKeywordId
       ? {
@@ -567,15 +567,15 @@ const App = () => {
     return newPost;
   };
 
-  const onSaveDraft = async ({ id, title, body, keywordId }) => {
+  const onSaveDraft = async ({ id, title, body, bodyHTML, keywordId }) => {
     const token = readString('wh_auth_token');
     if (!token) return null;
     const activeKeywordId = keywordId || todayKw?.id || null;
 
     try {
       const response = id
-        ? await updateDraft({ id, title, body, keywordId: activeKeywordId, token })
-        : await createDraft({ title, body, keywordId: activeKeywordId, token });
+        ? await updateDraft({ id, title, body, bodyHtml: bodyHTML, keywordId: activeKeywordId, token })
+        : await createDraft({ title, body, bodyHtml: bodyHTML, keywordId: activeKeywordId, token });
       const saved = response.draft;
       setDrafts(prev => [saved, ...prev.filter(d => d.id !== saved.id)]);
       return saved;
@@ -587,12 +587,12 @@ const App = () => {
 
   const [editingPost, setEditingPost] = useState(null);
 
-  const onUpdatePost = async (id, { title, body }) => {
+  const onUpdatePost = async (id, { title, body, bodyHtml }) => {
     const readMin = Math.max(1, Math.ceil((body || '').length / 350));
     const token = readString('wh_auth_token');
     if (token && typeof id === 'string') {
       try {
-        const { post } = await updatePost({ id, title, body, token });
+        const { post } = await updatePost({ id, title, body, bodyHtml, token });
         setPosts(ps => ps.map(p => p.id === id ? post : p));
         setPost(prev => prev?.id === id ? post : prev);
         return post;
@@ -606,11 +606,11 @@ const App = () => {
     }
 
     setPosts(ps => ps.map(p => p.id === id
-      ? { ...p, title, body, read: `${readMin}분`, edited: true }
+      ? { ...p, title, body, bodyHtml: bodyHtml || null, read: `${readMin}분`, edited: true }
       : p
     ));
     /* keep activePost in sync if user is currently viewing this post */
-    setPost(prev => prev?.id === id ? { ...prev, title, body, read: `${readMin}분`, edited: true } : prev);
+    setPost(prev => prev?.id === id ? { ...prev, title, body, bodyHtml: bodyHtml || null, read: `${readMin}분`, edited: true } : prev);
   };
 
   const onDeletePost = async (id) => {

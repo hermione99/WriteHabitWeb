@@ -75,9 +75,8 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
     if (isEditing) {
       setTitle(editingPost.title || '');
       if (editorRef.current) {
-        /* preserve original whitespace by using textContent → contenteditable */
-        editorRef.current.innerHTML = '';
-        editorRef.current.innerText = editingPost.body || '';
+        editorRef.current.innerHTML = editingPost.bodyHtml || '';
+        if (!editingPost.bodyHtml) editorRef.current.innerText = editingPost.body || '';
         setCharCount((editingPost.body || '').length);
       }
       return;
@@ -86,8 +85,9 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       setTitle(editingDraft.title || '');
       setDraftId(editingDraft.source === 'server' ? editingDraft.id : null);
       if (editorRef.current) {
-        editorRef.current.innerHTML = editingDraft.bodyHTML || '';
-        if (!editingDraft.bodyHTML) editorRef.current.innerText = editingDraft.body || '';
+        const draftHtml = editingDraft.bodyHTML || editingDraft.bodyHtml || '';
+        editorRef.current.innerHTML = draftHtml;
+        if (!draftHtml) editorRef.current.innerText = editingDraft.body || '';
         setCharCount((editorRef.current.innerText || '').length);
       }
       if (editingDraft.savedAt) setLastSavedAt(new Date(editingDraft.savedAt));
@@ -286,16 +286,17 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   const confirmPublish = async () => {
     if (publishing) return;
     const body = editorRef.current?.innerText?.trim() || '';
+    const bodyHtml = editorRef.current?.innerHTML || '';
     setConfirming(false);
     setPublishing(true);
     try {
       if (isEditing) {
-        const updatedPost = await onUpdatePost(editingPost.id, { title, body });
+        const updatedPost = await onUpdatePost(editingPost.id, { title, body, bodyHtml });
         onClearEditing();
         toast('글이 수정되었습니다 ✓');
-        onNav('detail', updatedPost || { ...editingPost, title, body });
+        onNav('detail', updatedPost || { ...editingPost, title, body, bodyHtml });
       } else {
-        await onPublish({ title, body, draftId, keywordId: activeKeywordId });
+        await onPublish({ title, body, bodyHtml, draftId, keywordId: activeKeywordId });
         setDraftId(null);
         onClearDraftEditing?.();
         localStorage.removeItem(DRAFT_KEY);
@@ -324,6 +325,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       title: localDraft.title || '제목 없는 초안',
       body: localDraft.body || '',
       bodyHTML: localDraft.bodyHTML,
+      bodyHtml: localDraft.bodyHTML,
       savedAt: localDraft.savedAt,
       source: 'local',
     };

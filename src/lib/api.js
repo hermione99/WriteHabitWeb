@@ -108,22 +108,22 @@ export const listPosts = (token, { keywordId, keyword, q } = {}) => {
   });
 };
 
-export const createPost = ({ title, body, keywordId, token }) =>
+export const createPost = ({ title, body, bodyHtml, keywordId, token }) =>
   request('/posts', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
   });
 
-export const updatePost = ({ id, title, body, keywordId, token }) =>
+export const updatePost = ({ id, title, body, bodyHtml, keywordId, token }) =>
   request(`/posts/${id}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
   });
 
 export const deletePost = ({ id, token }) =>
@@ -141,31 +141,31 @@ export const listDrafts = (token) =>
     },
   });
 
-export const createDraft = ({ title, body, keywordId, token }) =>
+export const createDraft = ({ title, body, bodyHtml, keywordId, token }) =>
   request('/posts/drafts', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
   });
 
-export const updateDraft = ({ id, title, body, keywordId, token }) =>
+export const updateDraft = ({ id, title, body, bodyHtml, keywordId, token }) =>
   request(`/posts/drafts/${id}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
   });
 
-export const publishDraft = ({ id, title, body, keywordId, token }) =>
+export const publishDraft = ({ id, title, body, bodyHtml, keywordId, token }) =>
   request(`/posts/drafts/${id}/publish`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
   });
 
 export const deleteDraft = ({ id, token }) =>
