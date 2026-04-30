@@ -23,8 +23,8 @@ import './styles.css';
 const MobileBottomNav = ({ active, onNav }) => {
   const items = [
     ['write', '✎', 'WRITE'],
-    ['archive', '▤', 'ARCHIVE'],
     ['feed', '☷', 'BROWSE'],
+    ['archive', '▤', 'ARCHIVE'],
     ['profile', '◉', 'PROFILE'],
   ];
 
