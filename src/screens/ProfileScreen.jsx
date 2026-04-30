@@ -203,11 +203,13 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     e.stopPropagation();
     onEditPost(p);
   };
-  const handleCardDelete = (e, p) => {
+  const handleCardDelete = async (e, p) => {
     e.stopPropagation();
     if (!window.confirm(`"${p.title}" 을(를) 삭제할까요?`)) return;
-    onDeletePost(p.id);
-    toast('글이 삭제되었습니다.');
+    try {
+      await onDeletePost(p.id);
+      toast('글이 삭제되었습니다.');
+    } catch {}
   };
 
   const renderPosts = (list, opts = {}) => {

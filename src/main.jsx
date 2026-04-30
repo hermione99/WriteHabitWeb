@@ -477,22 +477,21 @@ const App = () => {
     const nextLiked = !current?.liked;
     const token = readString('wh_auth_token');
 
-    if (token && typeof id === 'string') {
-      try {
-        const { post } = nextLiked
-          ? await likePost({ id, token })
-          : await unlikePost({ id, token });
-        applyPostPatch(id, post);
-        return post;
-      } catch (error) {
-        if (error.status !== 503) {
-          toast(error.message || '좋아요 처리에 실패했습니다.', 'error');
-          throw error;
-        }
-      }
+    if (!token || typeof id !== 'string') {
+      toast('서버에 연결된 로그인 상태에서만 처리할 수 있습니다.', 'error');
+      throw new Error('Authentication required');
     }
 
-    applyPostPatch(id, p => ({ ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 }));
+    try {
+      const { post } = nextLiked
+        ? await likePost({ id, token })
+        : await unlikePost({ id, token });
+      applyPostPatch(id, post);
+      return post;
+    } catch (error) {
+      toast(error.message || '좋아요 처리에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
+      throw error;
+    }
   };
 
   const onToggleBookmark = async (id) => {
@@ -501,70 +500,42 @@ const App = () => {
     const nextBookmarked = !current?.bookmarked;
     const token = readString('wh_auth_token');
 
-    if (token && typeof id === 'string') {
-      try {
-        const { post } = nextBookmarked
-          ? await bookmarkPost({ id, token })
-          : await unbookmarkPost({ id, token });
-        applyPostPatch(id, post);
-        return post;
-      } catch (error) {
-        if (error.status !== 503) {
-          toast(error.message || '저장 처리에 실패했습니다.', 'error');
-          throw error;
-        }
-      }
+    if (!token || typeof id !== 'string') {
+      toast('서버에 연결된 로그인 상태에서만 처리할 수 있습니다.', 'error');
+      throw new Error('Authentication required');
     }
 
-    applyPostPatch(id, p => ({ ...p, bookmarked: !p.bookmarked, bookmarks: p.bookmarked ? p.bookmarks - 1 : p.bookmarks + 1 }));
-  };
-
-  const buildLocalPost = ({ title, body, bodyHtml }) => {
-    const name = user?.nickname || '사용자';
-    const h    = user?.handle || sanitizeHandle(name) || 'user';
-    /* 한글 기준 분당 약 350자 읽기 속도 */
-    const readMin = Math.max(1, Math.ceil((body || '').length / 350));
-    return {
-      id: Date.now(), title, body, bodyHtml: bodyHtml || null,
-      author: name, handle: h,
-      initial: name[0],
-      time: '방금 전', read: `${readMin}분`,
-      likes: 0, comments: 0, bookmarks: 0, liked: false,
-    };
+    try {
+      const { post } = nextBookmarked
+        ? await bookmarkPost({ id, token })
+        : await unbookmarkPost({ id, token });
+      applyPostPatch(id, post);
+      return post;
+    } catch (error) {
+      toast(error.message || '저장 처리에 실패했습니다. 잠시 후 다시 시도해주세요.', 'error');
+      throw error;
+    }
   };
 
   const onPublish = async ({ title, body, bodyHtml, draftId, keywordId }) => {
     const token = readString('wh_auth_token');
     const activeKeywordId = keywordId || todayKw?.id || null;
-    if (token) {
-      try {
-        const { post } = draftId
-          ? await publishDraft({ id: draftId, title, body, bodyHtml, keywordId: activeKeywordId, token })
-          : await createPost({ title, body, bodyHtml, keywordId: activeKeywordId, token });
-        setPosts(ps => [post, ...ps.filter(p => p.id !== post.id)]);
-        if (draftId) setDrafts(prev => prev.filter(d => d.id !== draftId));
-        return post;
-      } catch (error) {
-        if (error.status !== 503) {
-          toast(error.message || '글 발행에 실패했습니다.', 'error');
-          throw error;
-        }
-        toast('DB가 아직 준비되지 않아 로컬에 임시 발행했습니다.', 'info');
-      }
+    if (!token) {
+      toast('글을 발행하려면 다시 로그인해주세요.', 'error');
+      throw new Error('Authentication required');
     }
 
-    const newPost = buildLocalPost({ title, body, bodyHtml });
-    newPost.keywordId = activeKeywordId;
-    newPost.keyword = todayKw?.id === activeKeywordId
-      ? {
-          id: todayKw.id,
-          word: todayKw.word,
-          eng: todayKw.eng,
-          prompt: todayKw.sub,
-        }
-      : null;
-    setPosts(ps => [newPost, ...ps]);
-    return newPost;
+    try {
+      const { post } = draftId
+        ? await publishDraft({ id: draftId, title, body, bodyHtml, keywordId: activeKeywordId, token })
+        : await createPost({ title, body, bodyHtml, keywordId: activeKeywordId, token });
+      setPosts(ps => [post, ...ps.filter(p => p.id !== post.id)]);
+      if (draftId) setDrafts(prev => prev.filter(d => d.id !== draftId));
+      return post;
+    } catch (error) {
+      toast(error.message || '글 발행에 실패했습니다. 서버 연결을 확인한 뒤 다시 시도해주세요.', 'error');
+      throw error;
+    }
   };
 
   const onSaveDraft = async ({ id, title, body, bodyHTML, keywordId }) => {
@@ -588,52 +559,43 @@ const App = () => {
   const [editingPost, setEditingPost] = useState(null);
 
   const onUpdatePost = async (id, { title, body, bodyHtml }) => {
-    const readMin = Math.max(1, Math.ceil((body || '').length / 350));
     const token = readString('wh_auth_token');
-    if (token && typeof id === 'string') {
-      try {
-        const { post } = await updatePost({ id, title, body, bodyHtml, token });
-        setPosts(ps => ps.map(p => p.id === id ? post : p));
-        setPost(prev => prev?.id === id ? post : prev);
-        return post;
-      } catch (error) {
-        if (error.status !== 503) {
-          toast(error.message || '글 수정에 실패했습니다.', 'error');
-          throw error;
-        }
-        toast('DB가 아직 준비되지 않아 로컬에서만 수정했습니다.', 'info');
-      }
+    if (!token || typeof id !== 'string') {
+      toast('글을 수정하려면 다시 로그인해주세요.', 'error');
+      throw new Error('Authentication required');
     }
 
-    setPosts(ps => ps.map(p => p.id === id
-      ? { ...p, title, body, bodyHtml: bodyHtml || null, read: `${readMin}분`, edited: true }
-      : p
-    ));
-    /* keep activePost in sync if user is currently viewing this post */
-    setPost(prev => prev?.id === id ? { ...prev, title, body, bodyHtml: bodyHtml || null, read: `${readMin}분`, edited: true } : prev);
+    try {
+      const { post } = await updatePost({ id, title, body, bodyHtml, token });
+      setPosts(ps => ps.map(p => p.id === id ? post : p));
+      setPost(prev => prev?.id === id ? post : prev);
+      return post;
+    } catch (error) {
+      toast(error.message || '글 수정에 실패했습니다. 서버 연결을 확인한 뒤 다시 시도해주세요.', 'error');
+      throw error;
+    }
   };
 
   const onDeletePost = async (id) => {
     const token = readString('wh_auth_token');
-    if (token && typeof id === 'string') {
-      try {
-        await deletePost({ id, token });
-      } catch (error) {
-        if (error.status !== 503) {
-          toast(error.message || '글 삭제에 실패했습니다.', 'error');
-          throw error;
-        }
-        toast('DB가 아직 준비되지 않아 로컬에서만 삭제했습니다.', 'info');
-      }
+    if (!token || typeof id !== 'string') {
+      toast('글을 삭제하려면 다시 로그인해주세요.', 'error');
+      throw new Error('Authentication required');
     }
 
-    setPosts(ps => ps.filter(p => p.id !== id));
-    /* clear comments tied to this post */
     try {
-      const all = readJSON('wh_comments', {});
-      delete all[id];
-      writeJSON('wh_comments', all);
-    } catch {}
+      await deletePost({ id, token });
+      setPosts(ps => ps.filter(p => p.id !== id));
+      /* clear comments tied to this post */
+      try {
+        const all = readJSON('wh_comments', {});
+        delete all[id];
+        writeJSON('wh_comments', all);
+      } catch {}
+    } catch (error) {
+      toast(error.message || '글 삭제에 실패했습니다. 서버 연결을 확인한 뒤 다시 시도해주세요.', 'error');
+      throw error;
+    }
   };
 
   const onEditPost = (post) => {

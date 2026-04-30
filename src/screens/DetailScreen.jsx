@@ -91,11 +91,13 @@ export const DetailScreen = ({post, onNav, posts, onToggleLike, onToggleBookmark
   const [moreOpen, setMoreOpen] = useState(false);
 
   const handleEdit = () => onEditPost(p);
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!window.confirm('이 글을 삭제할까요? 댓글도 함께 사라지고 되돌릴 수 없습니다.')) return;
-    onDeletePost(p.id);
-    toast('글이 삭제되었습니다.');
-    onNav('feed');
+    try {
+      await onDeletePost(p.id);
+      toast('글이 삭제되었습니다.');
+      onNav('feed');
+    } catch {}
   };
 
   const openReportPost = () => {
