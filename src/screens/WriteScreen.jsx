@@ -486,7 +486,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
           </div>
         )}
         {/* Keyword strip */}
-        <div style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', paddingBottom:20, borderBottom:'1px solid var(--rule-soft)', marginBottom:28}}>
+        <div className="write-keyword-strip" style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', paddingBottom:20, borderBottom:'1px solid var(--rule-soft)', marginBottom:28}}>
           <div>
             <div className="eyebrow" style={{marginBottom:8}}>오늘의 키워드 · No. {todayKw.no}</div>
             <div style={{fontFamily:'var(--f-kw)', fontSize:36, fontWeight:400, letterSpacing:'-0.02em', color:'var(--ink)'}}>

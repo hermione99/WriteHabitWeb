@@ -258,7 +258,7 @@ usersRouter.get('/users/me', authenticate, async (req, res, next) => {
     });
 
     res.json({
-      profile: await toPublicProfile(user, user, { includePrivate: true }),
+      profile: await toPublicProfile(user, user, { includePrivate: true, includeStreak: true }),
     });
   } catch (error) {
     next(error);
