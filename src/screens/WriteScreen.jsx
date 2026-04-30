@@ -52,28 +52,6 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       document.execCommand('defaultParagraphSeparator', false, 'p');
     } catch {}
   }, []);
-  useEffect(() => {
-    const root = document.documentElement;
-    const updateKeyboardOffset = () => {
-      const viewport = window.visualViewport;
-      if (!viewport) {
-        root.style.setProperty('--wh-keyboard-offset', '0px');
-        return;
-      }
-      const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
-      root.style.setProperty('--wh-keyboard-offset', `${Math.round(offset)}px`);
-    };
-    updateKeyboardOffset();
-    window.visualViewport?.addEventListener('resize', updateKeyboardOffset);
-    window.visualViewport?.addEventListener('scroll', updateKeyboardOffset);
-    window.addEventListener('orientationchange', updateKeyboardOffset);
-    return () => {
-      root.style.removeProperty('--wh-keyboard-offset');
-      window.visualViewport?.removeEventListener('resize', updateKeyboardOffset);
-      window.visualViewport?.removeEventListener('scroll', updateKeyboardOffset);
-      window.removeEventListener('orientationchange', updateKeyboardOffset);
-    };
-  }, []);
   /* listen to selection changes anywhere → keep toolbar in sync */
   useEffect(() => {
     const onSel = () => {

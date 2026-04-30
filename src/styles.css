@@ -966,7 +966,7 @@ body {
   .editor-body {
     order: 1;
     min-height: 42vh;
-    padding: 26px 28px 92px;
+    padding: 26px 28px 32px;
     font-size: 17px !important;
     line-height: 1.9;
     background: transparent;
@@ -976,15 +976,13 @@ body {
     display: none;
   }
   .editor-toolbar {
-    order: 3;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: max(var(--wh-keyboard-offset, 0px), env(safe-area-inset-bottom));
-    z-index: 170;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    order: 0;
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    padding: 8px 16px;
     border-top: 1px solid var(--rule-soft);
-    border-bottom: 0;
+    border-bottom: 1px solid var(--rule-soft);
     background: color-mix(in srgb, var(--paper) 94%, transparent);
     backdrop-filter: blur(16px);
     overflow-x: auto;
