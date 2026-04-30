@@ -364,7 +364,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       <TopBar active="write" onNav={onNav} dark={dark} onToggleDark={onToggleDark} right={
         <div className="write-actions" style={{display:'flex', alignItems:'center', gap:12}}>
           <span className="meta write-saved-label" style={{fontSize:11}}>{isEditing ? '편집 모드' : formatSavedLabel()}</span>
-          <button className="btn sm ghost" onClick={() => {
+          <button className="btn sm ghost write-action-cancel" onClick={() => {
             const body = editorRef.current?.innerText?.trim() || '';
             const dirty = isEditing
               ? (title !== editingPost.title || body !== (editingPost.body || '').trim())
@@ -374,16 +374,16 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
             if (isDraftEditing) onClearDraftEditing?.();
             onNav(isEditing ? 'detail' : 'feed', isEditing ? editingPost : undefined);
           }}>취소</button>
-          {!isEditing && <button className="btn sm" onClick={handleSave}>임시저장</button>}
+          {!isEditing && <button className="btn sm write-action-save" onClick={handleSave}>임시저장</button>}
           {!isEditing && (
-            <div style={{position:'relative'}} onClick={e => e.stopPropagation()}>
-              <button className="btn sm ghost" onClick={() => setDraftMenuOpen(o => !o)}
+            <div className="write-action-load-wrap" style={{position:'relative'}} onClick={e => e.stopPropagation()}>
+              <button className="btn sm ghost write-action-load" onClick={() => setDraftMenuOpen(o => !o)}
                 title={draftCount === 0 ? '저장된 임시저장글이 없습니다' : '임시저장글 불러오기'}
                 style={{opacity: draftCount === 0 ? 0.5 : 1}}>
                 불러오기 {draftCount > 0 && <span style={{fontFamily:'var(--f-mono)', marginLeft:4, color:'var(--ink-mute)'}}>{draftCount}</span>} ▾
               </button>
               {draftMenuOpen && (
-                <div style={{
+                <div className="draft-menu" style={{
                   position:'absolute', right:0, top:'calc(100% + 6px)', zIndex:40,
                   background:'var(--card)', border:'1px solid var(--rule-soft)', borderRadius:4,
                   boxShadow:'0 12px 32px rgba(0,0,0,0.12)', width:340, maxHeight:420, overflowY:'auto',
@@ -440,7 +440,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
               )}
             </div>
           )}
-          <button className="btn sm accent" onClick={handlePublish} disabled={publishing} title="⌘+Enter">
+          <button className="btn sm accent write-action-publish" onClick={handlePublish} disabled={publishing} title="⌘+Enter">
             {publishing ? (isEditing ? '수정 중…' : '발행 중…') : (isEditing ? '수정 완료' : '발행하기')} <span className="arr">→</span>
           </button>
         </div>
