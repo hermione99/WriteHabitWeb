@@ -683,46 +683,51 @@ body {
   .topbar-write .write-actions {
     width: 100%;
     display: grid !important;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     justify-content: initial;
     align-items: center;
-    gap: 8px !important;
+    gap: 0 !important;
   }
   .topbar-write .write-actions .btn {
     min-height: 36px;
-    padding: 7px 11px;
-    font-size: 12px;
+    width: 100%;
+    padding: 7px 4px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink-soft);
+    font-size: 13px;
+    justify-content: center;
+    text-align: center;
   }
   .topbar-write .write-actions > .btn.ghost:first-of-type {
     grid-column: 1;
-    justify-self: start;
-    border-color: transparent;
-    padding-left: 0;
-    padding-right: 8px;
-    color: var(--ink-soft);
+    justify-self: stretch;
   }
   .topbar-write .write-actions > .btn:not(.ghost):not(.accent),
   .topbar-write .write-actions > div {
     grid-column: 2;
-    justify-self: center;
+    justify-self: stretch;
   }
-  .topbar-write .write-actions > .btn:not(.ghost):not(.accent) {
-    border-color: var(--rule-soft);
-    background: transparent;
+  .topbar-write .write-actions > div {
+    grid-column: 3;
+    min-width: 0;
   }
   .topbar-write .write-actions > div .btn.ghost {
-    border-color: transparent;
+    width: 100%;
+    border: 0;
+    background: transparent;
     padding-left: 4px;
     padding-right: 4px;
     color: var(--ink-mute);
   }
   .topbar-write .write-actions .btn.accent {
-    grid-column: 3;
-    justify-self: end;
-    padding-left: 14px;
-    padding-right: 14px;
-    border-radius: 999px;
+    grid-column: 4;
+    justify-self: stretch;
+    color: var(--accent);
+    background: transparent;
   }
+  .topbar-write .write-actions .btn:hover { opacity: 1; }
 
   .mobile-bottom-nav {
     position: fixed;
