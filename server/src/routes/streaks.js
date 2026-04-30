@@ -71,7 +71,64 @@ const buildStreakSummary = (scheduledDays, writtenDays, todayKey) => {
   };
 };
 
+const makeStreakLabels = (period, today = new Date()) => {
+  const count = Number(period);
+  const start = addUtcDays(startOfKstTodayAsUtcDate(today), -(count - 1));
+  const points = [0, 0.17, 0.34, 0.51, 0.68, 0.85, 1].map((ratio) =>
+    addUtcDays(start, Math.min(count - 1, Math.round((count - 1) * ratio))),
+  );
+
+  return points.map((date, index) => {
+    if (index === points.length - 1) return '오늘';
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    return `${month}·${day}`;
+  });
+};
+
+const buildProfileStreak = (posts, today = new Date()) => {
+  const activeDays = new Set(posts.map((post) => dayKey(startOfKstTodayAsUtcDate(post.createdAt))));
+  const todayKey = dayKey(startOfKstTodayAsUtcDate(today));
+  let current = 0;
+  while (activeDays.has(todayKey - current)) current += 1;
+
+  return {
+    current,
+    completedToday: activeDays.has(todayKey),
+    activity: {
+      30: Array.from({ length: 30 }, (_, index) => activeDays.has(todayKey - 29 + index)),
+      90: Array.from({ length: 90 }, (_, index) => activeDays.has(todayKey - 89 + index)),
+      365: Array.from({ length: 365 }, (_, index) => activeDays.has(todayKey - 364 + index)),
+    },
+  };
+};
+
 export const streaksRouter = Router();
+
+streaksRouter.get('/streaks/me/summary', authenticate, async (req, res, next) => {
+  try {
+    const posts = await prisma.post.findMany({
+      where: {
+        authorId: req.user.id,
+        status: 'PUBLISHED',
+      },
+      select: {
+        createdAt: true,
+      },
+    });
+
+    res.json({
+      streak: buildProfileStreak(posts),
+      labels: {
+        30: makeStreakLabels(30),
+        90: makeStreakLabels(90),
+        365: makeStreakLabels(365),
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 streaksRouter.get('/streaks/me', authenticate, async (req, res, next) => {
   try {

@@ -96,7 +96,7 @@ const makeStreakLabels = (period, today = new Date()) => {
   });
 };
 
-const makeProfileDetails = async (user, viewer = null, { includePrivate = false } = {}) => {
+const makeProfileDetails = async (user, viewer = null, { includePrivate = false, includeStreak = false } = {}) => {
   const [
     publishedPostsCount,
     postBodies,
@@ -188,18 +188,30 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false 
           include: postInclude,
         })
       : Promise.resolve([]),
-    prisma.post.findMany({
-      where: {
-        authorId: user.id,
-        status: 'PUBLISHED',
-      },
-      select: {
-        createdAt: true,
-      },
-    }),
+    includeStreak
+      ? prisma.post.findMany({
+          where: {
+            authorId: user.id,
+            status: 'PUBLISHED',
+          },
+          select: {
+            createdAt: true,
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const characterCount = postBodies.reduce((sum, post) => sum + (post.body || '').length, 0);
+  const streakStats = includeStreak
+    ? {
+        streak: buildStreak(streakPosts),
+        streakLabels: {
+          30: makeStreakLabels(30),
+          90: makeStreakLabels(90),
+          365: makeStreakLabels(365),
+        },
+      }
+    : {};
 
   return {
     stats: {
@@ -208,12 +220,7 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false 
       receivedLikes,
       followers: followers.length,
       following: following.length,
-      streak: buildStreak(streakPosts),
-      streakLabels: {
-        30: makeStreakLabels(30),
-        90: makeStreakLabels(90),
-        365: makeStreakLabels(365),
-      },
+      ...streakStats,
     },
     followers: followers.map((item) => formatProfileUser(item.follower)),
     following: following.map((item) => formatProfileUser(item.following)),
@@ -345,7 +352,7 @@ usersRouter.get('/users/:handle', async (req, res, next) => {
     }
 
     res.json({
-      profile: await toPublicProfile(user),
+      profile: await toPublicProfile(user, null, { includeStreak: true }),
     });
   } catch (error) {
     next(error);

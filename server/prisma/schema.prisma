@@ -87,6 +87,7 @@ model Post {
   reports     Report[]
 
   @@index([authorId, createdAt])
+  @@index([authorId, status, createdAt])
   @@index([keywordId])
 }
 

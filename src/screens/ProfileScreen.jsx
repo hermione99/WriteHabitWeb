@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { checkHandleAvailable, sanitizeHandle } from '../lib/handles.js';
-import { checkHandleAvailability, getMyProfile, getPublicProfile, resolveAssetUrl, uploadAvatar } from '../lib/api.js';
+import { checkHandleAvailability, getMyProfile, getMyStreakSummary, getPublicProfile, resolveAssetUrl, uploadAvatar } from '../lib/api.js';
 import { Avatar } from '../components/Avatar.jsx';
 import { readString } from '../lib/storage.js';
 import { useToast } from '../components/Toast.jsx';
@@ -33,6 +33,9 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
   const followed = viewUser ? follows?.has(viewUser.handle) : false;
 
   const [remoteProfile, setRemoteProfile] = useState(null);
+  const [profileStreak, setProfileStreak] = useState(null);
+  const [profileStreakLabels, setProfileStreakLabels] = useState(null);
+  const [profileStreakLoading, setProfileStreakLoading] = useState(false);
   const [profileTab, setProfileTab] = useState('글');
   const [streakPeriod, setStreakPeriod] = useState('30일');
   const [editing, setEditing] = useState(false);
@@ -64,6 +67,33 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     load();
     return () => { cancelled = true; };
   }, [isOwnProfile, viewUser?.handle, user?.handle, user?.updatedAt]);
+
+  useEffect(() => {
+    const token = readString('wh_auth_token');
+    if (!isOwnProfile || !token) {
+      setProfileStreak(null);
+      setProfileStreakLabels(null);
+      setProfileStreakLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setProfileStreakLoading(true);
+    getMyStreakSummary(token)
+      .then((result) => {
+        if (cancelled) return;
+        setProfileStreak(result?.streak || null);
+        setProfileStreakLabels(result?.labels || null);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setProfileStreak(null);
+        setProfileStreakLabels(null);
+      })
+      .finally(() => {
+        if (!cancelled) setProfileStreakLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [isOwnProfile, user?.handle, user?.updatedAt]);
 
   const editHandlePreview = sanitizeHandle(editHandle);
 
@@ -172,11 +202,12 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
   }, [editing]);
 
   const { key: streakKey, columns: streakColumns } = STREAK_PERIODS[streakPeriod];
-  const streakActivity = remoteProfile?.stats?.streak?.activity?.[streakKey] || [];
+  const currentStreak = profileStreak || remoteProfile?.stats?.streak || null;
+  const streakActivity = currentStreak?.activity?.[streakKey] || [];
   const streakData = streakActivity.map((active, i) => (
-    i === streakActivity.length - 1 && remoteProfile?.stats?.streak?.completedToday ? 'today' : active ? 'on' : 'off'
+    i === streakActivity.length - 1 && currentStreak?.completedToday ? 'today' : active ? 'on' : 'off'
   ));
-  const streakLabels = remoteProfile?.stats?.streakLabels?.[streakKey] || [];
+  const streakLabels = profileStreakLabels?.[streakKey] || remoteProfile?.stats?.streakLabels?.[streakKey] || [];
 
   const myPosts      = remoteProfile?.posts || posts.filter(p => p.handle === handle || p.author === name);
   const savedPosts   = remoteProfile?.bookmarkedPosts || posts.filter(p => p.bookmarked);
@@ -189,7 +220,7 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     ['총 분량', formatNumber(profileStats.characters), '자'],
     ['받은 ♥', formatNumber(profileStats.receivedLikes), ''],
     ['팔로워', formatNumber(profileStats.followers), ''],
-    ['현재 스트릭', formatNumber(profileStats.streak?.current), '일'],
+    ['현재 스트릭', profileStreakLoading && !currentStreak ? '...' : formatNumber(currentStreak?.current), '일'],
   ];
 
   const handleShare = () => {
@@ -505,8 +536,8 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
               <div>
                 <div className="eyebrow">연속 작성 · WRITING STREAK</div>
                 <div style={{fontFamily:'var(--f-kr-serif)', fontSize:22, fontWeight:700, marginTop:4, color:'var(--ink)'}}>
-                  {formatNumber(profileStats.streak?.current)}일 연속 기록 중
-                  {profileStats.streak?.completedToday && (
+                  {profileStreakLoading && !currentStreak ? '불러오는 중' : `${formatNumber(currentStreak?.current)}일 연속 기록 중`}
+                  {currentStreak?.completedToday && (
                     <span style={{color:'var(--accent)', fontFamily:'var(--f-latin)', fontSize:18, marginLeft:8}}>● 오늘 완료</span>
                   )}
                 </div>

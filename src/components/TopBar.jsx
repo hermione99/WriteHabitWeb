@@ -27,7 +27,7 @@ export const TopBar = ({
   };
 
   return (
-    <header className="topbar">
+    <header className={`topbar topbar-${active || 'default'}`}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 40 }}>
         <Logo onClick={() => onNav('feed')} />
         <nav className="tabs">

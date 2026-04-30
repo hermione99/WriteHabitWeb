@@ -287,6 +287,13 @@ export const getMyStreak = ({ year, month, token }) => {
   });
 };
 
+export const getMyStreakSummary = (token) =>
+  request('/streaks/me/summary', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
 export const getMySocialState = (token) =>
   request('/social/me', {
     headers: {

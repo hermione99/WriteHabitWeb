@@ -20,6 +20,31 @@ import { readJSON, readReports, readSet, readString, removeStorageKeys, writeJSO
 import { ACCOUNT_STORAGE_KEYS, DEFAULT_PREFS, KEYWORDS_ARCHIVE, TODAY_KW } from './data/writehabitData.js';
 import './styles.css';
 
+const MobileBottomNav = ({ active, onNav }) => {
+  const items = [
+    ['write', '✎', 'WRITE'],
+    ['archive', '▤', 'ARCHIVE'],
+    ['feed', '☷', 'BROWSE'],
+    ['profile', '◉', 'PROFILE'],
+  ];
+
+  return (
+    <nav className="mobile-bottom-nav" aria-label="모바일 주요 메뉴">
+      {items.map(([key, icon, label]) => (
+        <button
+          key={key}
+          className={active === key ? 'active' : ''}
+          onClick={() => onNav(key)}
+          type="button"
+        >
+          <span className="mobile-bottom-nav-icon">{icon}</span>
+          <span>{label}</span>
+        </button>
+      ))}
+    </nav>
+  );
+};
+
 /* ══════════════════════════════
    APP ROOT
 ══════════════════════════════ */
@@ -670,8 +695,10 @@ const App = () => {
 
   const commonProps = { onNav, dark, onToggleDark };
 
+  const showMobileBottomNav = ['feed', 'archive', 'profile', 'detail'].includes(screen);
+
   return (
-    <div>
+    <div className={showMobileBottomNav ? 'has-mobile-bottom-nav' : ''}>
       {!onboarded && user && (
         <OnboardingOverlay onDone={onCompleteOnboarding} onSkip={onSkipOnboarding} onNav={onNav} stats={stats} />
       )}
@@ -717,6 +744,8 @@ const App = () => {
                                   onExportData={onExportData} onDeleteAccount={onDeleteAccount} />}
       {screen === 'terms' && <LegalScreen {...commonProps} type="terms" />}
       {screen === 'privacy' && <LegalScreen {...commonProps} type="privacy" />}
+
+      {showMobileBottomNav && <MobileBottomNav active={screen === 'detail' ? 'feed' : screen} onNav={onNav} />}
 
       <footer style={{borderTop:'1px solid var(--rule-ghost)', padding:'24px 56px', display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:40}}>
         <div style={{display:'flex', gap:24, alignItems:'center'}}>
