@@ -20,13 +20,55 @@ const getKeywordMonth = (keyword) => keyword.startsAt
   ? String(new Date(keyword.startsAt).getMonth() + 1).padStart(2, '0')
   : (keyword.date || '').split('·')[0] || '04';
 
+const getTodayParts = (todayKw) => {
+  if (todayKw?.startsAt) {
+    const date = new Date(todayKw.startsAt);
+    if (!Number.isNaN(date.getTime())) {
+      return {
+        year: String(date.getFullYear()),
+        month: String(date.getMonth() + 1).padStart(2, '0'),
+      };
+    }
+  }
+  if (todayKw?.dateStr) {
+    const [year, month] = todayKw.dateStr.split('·');
+    if (year && month) return { year, month: month.padStart(2, '0') };
+  }
+  const now = new Date();
+  return {
+    year: String(now.getFullYear()),
+    month: String(now.getMonth() + 1).padStart(2, '0'),
+  };
+};
+
 export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
   const toast = useToast();
   const [showMore, setShowMore] = useState(false);
-  const years = [...new Set(keywords.map(getKeywordYear))].sort((a, b) => b.localeCompare(a));
-  const months = [...new Set(keywords.map(getKeywordMonth))].sort((a, b) => b.localeCompare(a));
-  const [filterYear, setFilterYear] = useState(years[0] || '2026');
-  const [filterMonth, setFilterMonth] = useState(months[0] || '04');
+  const todayParts = getTodayParts(todayKw);
+  const todayArchiveKeyword = todayKw?.word
+    ? {
+        ...todayKw,
+        id: todayKw.id,
+        word: todayKw.word,
+        eng: todayKw.eng,
+        count: stats?.todayPosts ?? 0,
+        startsAt: todayKw.startsAt,
+        date: `${todayParts.month}·${todayKw.dateStr?.split('·')?.[2] || String(new Date().getDate()).padStart(2, '0')}`,
+      }
+    : null;
+  const archiveKeywords = [...(todayArchiveKeyword ? [todayArchiveKeyword] : []), ...keywords]
+    .reduce((map, keyword) => {
+      const key = keyword.id || `${getKeywordYear(keyword)}-${getKeywordMonth(keyword)}-${keyword.word}`;
+      if (!key || map.has(key)) return map;
+      map.set(key, keyword);
+      return map;
+    }, new Map());
+  const allKeywords = [...archiveKeywords.values()];
+  const years = [...new Set(allKeywords.map(getKeywordYear))].sort((a, b) => b.localeCompare(a));
+  const [filterYear, setFilterYear] = useState(todayParts.year);
+  const months = [...new Set(allKeywords.filter((keyword) => getKeywordYear(keyword) === filterYear).map(getKeywordMonth))]
+    .sort((a, b) => b.localeCompare(a));
+  const [filterMonth, setFilterMonth] = useState(todayParts.month);
   const [yearOpen, setYearOpen] = useState(false);
   const [monthOpen, setMonthOpen] = useState(false);
   const [streak, setStreak] = useState(null);
@@ -36,13 +78,21 @@ export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
   const [suggesting, setSuggesting] = useState(false);
 
   useEffect(() => {
-    if (years.length && !years.includes(filterYear)) setFilterYear(years[0]);
-    if (months.length && !months.includes(filterMonth)) setFilterMonth(months[0]);
-  }, [years, months, filterYear, filterMonth]);
+    if (years.length && !years.includes(filterYear)) {
+      setFilterYear(years.includes(todayParts.year) ? todayParts.year : years[0]);
+    }
+  }, [years, filterYear, todayParts.year]);
 
-  const filteredKeywords = keywords.filter((k) => getKeywordYear(k) === filterYear && getKeywordMonth(k) === filterMonth);
-  const keywordDays = stats?.serviceDays || keywords.length;
-  const totalWritings = stats?.posts ?? keywords.reduce((sum, k) => sum + (k.count || 0), 0);
+  useEffect(() => {
+    if (!months.length) return;
+    if (!months.includes(filterMonth)) {
+      setFilterMonth(filterYear === todayParts.year && months.includes(todayParts.month) ? todayParts.month : months[0]);
+    }
+  }, [months, filterMonth, filterYear, todayParts.year, todayParts.month]);
+
+  const filteredKeywords = allKeywords.filter((k) => getKeywordYear(k) === filterYear && getKeywordMonth(k) === filterMonth);
+  const keywordDays = stats?.serviceDays || allKeywords.length;
+  const totalWritings = stats?.posts ?? allKeywords.reduce((sum, k) => sum + (k.count || 0), 0);
   const visibleKeywords = showMore ? filteredKeywords : filteredKeywords.slice(0, 10);
   const todayKeywordForRank = todayKw?.word
     ? {
@@ -54,7 +104,7 @@ export const ArchiveScreen = ({onNav, keywords = [], stats, todayKw}) => {
         startsAt: todayKw.startsAt,
       }
     : null;
-  const topKeywordCandidates = [...keywords, ...(todayKeywordForRank ? [todayKeywordForRank] : [])]
+  const topKeywordCandidates = [...allKeywords, ...(todayKeywordForRank ? [todayKeywordForRank] : [])]
     .reduce((map, keyword) => {
       const key = keyword.id || keyword.word;
       if (!key) return map;
