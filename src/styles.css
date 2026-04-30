@@ -966,7 +966,7 @@ body {
   .editor-body {
     order: 1;
     min-height: 42vh;
-    padding: 26px 28px 28px;
+    padding: 26px 28px 92px;
     font-size: 17px !important;
     line-height: 1.9;
     background: transparent;
@@ -977,10 +977,11 @@ body {
   }
   .editor-toolbar {
     order: 3;
-    position: sticky;
-    bottom: 0;
-    z-index: 30;
-    margin-top: 10px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: max(var(--wh-keyboard-offset, 0px), env(safe-area-inset-bottom));
+    z-index: 170;
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
     border-top: 1px solid var(--rule-soft);
     border-bottom: 0;
