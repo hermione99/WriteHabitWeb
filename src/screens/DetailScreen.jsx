@@ -61,6 +61,20 @@ const sanitizeArticleHtml = (html = '') => {
   };
 
   cleanNode(root);
+
+  // 빈 단락 제거 — 사용자가 Enter 두 번 눌러서 생긴 <p></p>, <p><br></p>,
+  // 공백/&nbsp;만 있는 단락을 시각적으로 빈 줄 만들지 않게 정리.
+  const isEmptyParagraph = (el) => {
+    if (!(el.tagName === 'P' || el.tagName === 'DIV')) return false;
+    const text = (el.textContent || '').replace(/ /g, '').trim();
+    if (text) return false;
+    // <br> 만 있어도 빈 단락으로 취급
+    return [...el.children].every((c) => c.tagName === 'BR');
+  };
+  [...root.querySelectorAll('p, div')]
+    .filter(isEmptyParagraph)
+    .forEach((el) => el.remove());
+
   return root.innerHTML;
 };
 
