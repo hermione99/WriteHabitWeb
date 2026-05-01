@@ -20,7 +20,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   /* unified toolbar state — one source of truth for all formatting toggles */
   const [tools, setTools] = useState({
     bold:false, italic:false, underline:false, strike:false,
-    h1:false, h2:false, blockquote:false,
+    h1:false, h2:false, h3:false, blockquote:false,
     ul:false, ol:false,
     alignL:false, alignC:false, alignR:false,
     block:'본문',  /* dropdown label */
@@ -32,19 +32,20 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
     };
     const h1 = isBlock('H1');
     const h2 = isBlock('H2');
+    const h3 = isBlock('H3');
     const bq = isBlock('BLOCKQUOTE');
     setTools({
       bold:      document.queryCommandState('bold'),
       italic:    document.queryCommandState('italic'),
       underline: document.queryCommandState('underline'),
       strike:    document.queryCommandState('strikeThrough'),
-      h1, h2, blockquote: bq,
+      h1, h2, h3, blockquote: bq,
       ul:     document.queryCommandState('insertUnorderedList'),
       ol:     document.queryCommandState('insertOrderedList'),
       alignL: document.queryCommandState('justifyLeft'),
       alignC: document.queryCommandState('justifyCenter'),
       alignR: document.queryCommandState('justifyRight'),
-      block:  h1 ? '제목 1' : h2 ? '제목 2' : bq ? '인용구' : '본문',
+      block:  h1 ? '제목 1' : h2 ? '제목 2' : h3 ? '제목 3' : '본문',
     });
   };
   useEffect(() => {
@@ -529,10 +530,10 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
                   boxShadow:'0 8px 24px rgba(0,0,0,0.08)', minWidth:140,
                 }} onClick={e => e.stopPropagation()}>
                   {[
-                    ['P',          '본문',   {fontSize:14, fontFamily:'var(--f-kr-serif)'}],
-                    ['H1',         '제목 1', {fontSize:18, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
-                    ['H2',         '제목 2', {fontSize:16, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
-                    ['BLOCKQUOTE', '인용구', {fontSize:14, fontFamily:'var(--f-kr-serif)', fontStyle:'italic', color:'var(--accent)'}],
+                    ['P',  '본문',   {fontSize:14, fontFamily:'var(--f-kr-serif)'}],
+                    ['H1', '제목 1', {fontSize:18, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
+                    ['H2', '제목 2', {fontSize:16, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
+                    ['H3', '제목 3', {fontSize:15, fontFamily:'var(--f-kr-serif)', fontWeight:700}],
                   ].map(([tag, label, st]) => (
                     <button key={tag} onMouseDown={e => { e.preventDefault(); setBlock(tag); }}
                       style={{display:'block', width:'100%', textAlign:'left', padding:'10px 14px',
