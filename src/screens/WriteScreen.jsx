@@ -68,7 +68,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
   const [visibility, setVisibility] = useState('전체 공개');
   const [visMenuOpen, setVisMenuOpen] = useState(false);
   const [restored, setRestored] = useState(false);
-  const VISIBILITIES = ['전체 공개', '팔로워 공개', '나만 보기'];
+  const VISIBILITIES = ['전체 공개', '나만 보기'];
 
   /* Restore draft (or load editingPost) on mount */
   useEffect(() => {
@@ -100,7 +100,10 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
       const d = JSON.parse(raw);
       if (d.title) setTitle(d.title);
       if (d.commentsOn !== undefined) setCommentsOn(d.commentsOn);
-      if (d.visibility) setVisibility(d.visibility);
+      if (d.visibility) {
+        // 과거에 저장된 draft가 '팔로워 공개'라면 '전체 공개'로 마이그레이션
+        setVisibility(d.visibility === '팔로워 공개' ? '전체 공개' : d.visibility);
+      }
       if (d.bodyHTML && editorRef.current) {
         editorRef.current.innerHTML = d.bodyHTML;
         setCharCount((editorRef.current.innerText || '').length);
