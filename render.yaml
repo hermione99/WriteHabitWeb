@@ -4,7 +4,7 @@ services:
     runtime: node
     rootDir: server
     plan: starter
-    buildCommand: npm install && npm run prisma:generate
+    buildCommand: npm install && npm run prisma:generate && npm run prisma:deploy
     startCommand: npm start
     healthCheckPath: /api/ready
     envVars:
