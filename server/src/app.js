@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { adminRouter } from './routes/admin.js';
+import { devicesRouter } from './routes/devices.js';
 import { env } from './config/env.js';
 import { authRouter } from './routes/auth.js';
 import { healthRouter } from './routes/health.js';
@@ -49,6 +50,7 @@ export const createApp = () => {
   app.use('/api', usersRouter);
   app.use('/api', socialRouter);
   app.use('/api', uploadsRouter);
+  app.use('/api', devicesRouter);
   app.use('/api', adminRouter);
 
   app.use((req, res) => {
