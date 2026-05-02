@@ -295,12 +295,12 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
     setPublishing(true);
     try {
       if (isEditing) {
-        const updatedPost = await onUpdatePost(editingPost.id, { title, body, bodyHtml });
+        const updatedPost = await onUpdatePost(editingPost.id, { title, body, bodyHtml, visibility });
         onClearEditing();
         toast('글이 수정되었습니다 ✓');
         onNav('detail', updatedPost || { ...editingPost, title, body, bodyHtml });
       } else {
-        await onPublish({ title, body, bodyHtml, draftId, keywordId: activeKeywordId });
+        await onPublish({ title, body, bodyHtml, draftId, keywordId: activeKeywordId, visibility });
         setDraftId(null);
         onClearDraftEditing?.();
         localStorage.removeItem(DRAFT_KEY);

@@ -542,7 +542,12 @@ const App = () => {
     }
   };
 
-  const onPublish = async ({ title, body, bodyHtml, draftId, keywordId }) => {
+  // 화면의 visibility 라벨을 백엔드 PostStatus enum으로 매핑.
+  // '나만 보기' → HIDDEN, 그 외 (전체 공개 / 미지정) → PUBLISHED.
+  const visibilityToStatus = (visibility) =>
+    visibility === '나만 보기' ? 'HIDDEN' : 'PUBLISHED';
+
+  const onPublish = async ({ title, body, bodyHtml, draftId, keywordId, visibility }) => {
     const token = readString('wh_auth_token');
     const activeKeywordId = keywordId || todayKw?.id || null;
     if (!token) {
@@ -550,10 +555,22 @@ const App = () => {
       throw new Error('Authentication required');
     }
 
+    const status = visibilityToStatus(visibility);
+
     try {
-      const { post } = draftId
-        ? await publishDraft({ id: draftId, title, body, bodyHtml, keywordId: activeKeywordId, token })
-        : await createPost({ title, body, bodyHtml, keywordId: activeKeywordId, token });
+      let post;
+      if (draftId) {
+        // publishDraft는 항상 PUBLISHED로 발행되므로, HIDDEN이면 발행 직후 status patch.
+        const published = await publishDraft({ id: draftId, title, body, bodyHtml, keywordId: activeKeywordId, token });
+        post = published.post;
+        if (status === 'HIDDEN' && post?.id) {
+          const updated = await updatePost({ id: post.id, status: 'HIDDEN', token });
+          post = updated.post;
+        }
+      } else {
+        const created = await createPost({ title, body, bodyHtml, keywordId: activeKeywordId, status, token });
+        post = created.post;
+      }
       setPosts(ps => [post, ...ps.filter(p => p.id !== post.id)]);
       if (draftId) setDrafts(prev => prev.filter(d => d.id !== draftId));
       return post;
@@ -583,15 +600,17 @@ const App = () => {
 
   const [editingPost, setEditingPost] = useState(null);
 
-  const onUpdatePost = async (id, { title, body, bodyHtml }) => {
+  const onUpdatePost = async (id, { title, body, bodyHtml, visibility }) => {
     const token = readString('wh_auth_token');
     if (!token || typeof id !== 'string') {
       toast('글을 수정하려면 다시 로그인해주세요.', 'error');
       throw new Error('Authentication required');
     }
 
+    const status = visibility ? visibilityToStatus(visibility) : undefined;
+
     try {
-      const { post } = await updatePost({ id, title, body, bodyHtml, token });
+      const { post } = await updatePost({ id, title, body, bodyHtml, status, token });
       setPosts(ps => ps.map(p => p.id === id ? post : p));
       setPost(prev => prev?.id === id ? post : prev);
       return post;

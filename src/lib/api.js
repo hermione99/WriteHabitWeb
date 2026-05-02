@@ -108,22 +108,22 @@ export const listPosts = (token, { keywordId, keyword, q } = {}) => {
   });
 };
 
-export const createPost = ({ title, body, bodyHtml, keywordId, token }) =>
+export const createPost = ({ title, body, bodyHtml, keywordId, status, token }) =>
   request('/posts', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId, status }),
   });
 
-export const updatePost = ({ id, title, body, bodyHtml, keywordId, token }) =>
+export const updatePost = ({ id, title, body, bodyHtml, keywordId, status, token }) =>
   request(`/posts/${id}`, {
     method: 'PATCH',
     headers: {
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, body, bodyHtml, keywordId }),
+    body: JSON.stringify({ title, body, bodyHtml, keywordId, status }),
   });
 
 export const deletePost = ({ id, token }) =>
