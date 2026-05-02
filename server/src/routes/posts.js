@@ -13,6 +13,8 @@ const postInputSchema = z.object({
   body: z.string().trim().min(1).max(20000),
   bodyHtml: z.string().max(60000).optional().nullable(),
   keywordId: z.string().optional().nullable(),
+  // 'PUBLISHED' = 공개, 'HIDDEN' = 나만 보기. DRAFT는 별도 라우트로만 생성.
+  status: z.enum(['PUBLISHED', 'HIDDEN']).optional(),
 });
 
 const draftInputSchema = z.object({
@@ -276,7 +278,12 @@ postsRouter.get('/posts/:id', optionalAuth, async (req, res, next) => {
       include: postInclude,
     });
 
-    if (!post || post.status !== 'PUBLISHED') {
+    if (!post) {
+      res.status(404).json({ error: 'Post not found' });
+      return;
+    }
+    // 비공개(HIDDEN) / 임시저장(DRAFT)는 작성자 본인에게만 노출
+    if (post.status !== 'PUBLISHED' && post.authorId !== req.user?.id) {
       res.status(404).json({ error: 'Post not found' });
       return;
     }
@@ -299,6 +306,7 @@ postsRouter.post('/posts', authenticate, async (req, res, next) => {
         bodyHtml: body.bodyHtml || null,
         authorId: req.user.id,
         keywordId: body.keywordId || null,
+        status: body.status || 'PUBLISHED',
       },
       include: postCreateInclude,
     });
@@ -338,6 +346,7 @@ postsRouter.patch('/posts/:id', authenticate, async (req, res, next) => {
         ...(body.body !== undefined ? { body: body.body } : {}),
         ...(body.bodyHtml !== undefined ? { bodyHtml: body.bodyHtml || null } : {}),
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
+        ...(body.status !== undefined ? { status: body.status } : {}),
       },
       include: postInclude,
     });

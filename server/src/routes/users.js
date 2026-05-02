@@ -245,8 +245,9 @@ usersRouter.get('/users/me', authenticate, async (req, res, next) => {
       },
       include: {
         posts: {
+          // 본인 프로필이므로 PUBLISHED + HIDDEN(나만 보기) 모두 포함. DRAFT는 제외.
           where: {
-            status: 'PUBLISHED',
+            status: { in: ['PUBLISHED', 'HIDDEN'] },
           },
           orderBy: {
             createdAt: 'desc',

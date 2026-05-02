@@ -41,6 +41,7 @@ export const toPublicPost = (post, viewer = null) => {
           prompt: post.keyword.prompt || '',
         }
       : null,
+    status: post.status,
     createdAt: post.createdAt,
     updatedAt: post.updatedAt,
   };
