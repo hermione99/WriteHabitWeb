@@ -24,6 +24,10 @@ export const env = {
   cloudinaryApiKey: process.env.CLOUDINARY_API_KEY || '',
   cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET || '',
   cloudinaryFolder: process.env.CLOUDINARY_FOLDER || 'writehabit/avatars',
+  appleServicesId: process.env.APPLE_SERVICES_ID || '',
+  appleBundleId: process.env.APPLE_BUNDLE_ID || '',
+  googleWebClientId: process.env.GOOGLE_WEB_CLIENT_ID || '',
+  googleIosClientId: process.env.GOOGLE_IOS_CLIENT_ID || '',
 };
 
 if (isProduction) {
