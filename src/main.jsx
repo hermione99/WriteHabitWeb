@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { ToastProvider, useToast } from './components/Toast.jsx';
 import { Logo } from './components/Logo.jsx';
 import { OnboardingOverlay } from './components/OnboardingOverlay.jsx';
+import { ProfileSetupModal } from './components/ProfileSetupModal.jsx';
 import { TopBar } from './components/TopBar.jsx';
 import { FeedScreen } from './screens/FeedScreen.jsx';
 import { WriteScreen } from './screens/WriteScreen.jsx';
@@ -216,6 +217,7 @@ const App = () => {
 
   /* ── Onboarding ── shown to first-time users after signup */
   const [onboarded, setOnboarded] = useState(() => readString('wh_onboarded') === '1');
+  const [needsProfileSetup, setNeedsProfileSetup] = useState(false);
   const onCompleteOnboarding = () => {
     writeString('wh_onboarded', '1');
     setOnboarded(true);
@@ -685,7 +687,7 @@ const App = () => {
     avatarUrl: remoteUser.avatarUrl,
   });
 
-  const onLogin = ({ user: remoteUser, accessToken }, remember = true) => {
+  const onLogin = ({ user: remoteUser, accessToken, isNewUser }, remember = true) => {
     const userData = toAppUser(remoteUser);
     if (remember) {
       writeString('wh_auth_token', accessToken);
@@ -695,6 +697,7 @@ const App = () => {
     }
     setUser(userData);
     setScreen('feed');
+    if (isNewUser) setNeedsProfileSetup(true);
     listNotifications(accessToken)
       .then(({ notifications: remoteNotifications }) => setNotifications(remoteNotifications || []))
       .catch(() => {});
@@ -721,6 +724,17 @@ const App = () => {
       {!onboarded && user && (
         <OnboardingOverlay onDone={onCompleteOnboarding} onSkip={onSkipOnboarding} onNav={onNav} stats={stats} />
       )}
+      <ProfileSetupModal
+        open={needsProfileSetup && !!user}
+        user={user}
+        token={readString('wh_auth_token')}
+        onComplete={(updatedRemote) => {
+          setUser(toAppUser(updatedRemote));
+          setNeedsProfileSetup(false);
+          toast('프로필이 저장되었습니다.');
+        }}
+        onSkip={() => setNeedsProfileSetup(false)}
+      />
       {screen !== 'write' && screen !== 'admin' && (
         <TopBar active={screen} {...commonProps} user={user} onLogout={onLogout}
           todayKw={todayKw}

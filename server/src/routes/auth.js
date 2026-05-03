@@ -312,16 +312,17 @@ const findOrCreateSocialUser = async ({ provider, sub, email, displayName }) => 
   const subField = provider === 'apple' ? 'appleSub' : 'googleSub';
 
   const linked = await prisma.user.findUnique({ where: { [subField]: sub } });
-  if (linked) return linked;
+  if (linked) return { user: linked, isNew: false };
 
   const normalizedEmail = email ? email.toLowerCase() : null;
   if (normalizedEmail) {
     const byEmail = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (byEmail) {
-      return prisma.user.update({
+      const updated = await prisma.user.update({
         where: { id: byEmail.id },
         data: { [subField]: sub },
       });
+      return { user: updated, isNew: false };
     }
   }
 
@@ -332,7 +333,7 @@ const findOrCreateSocialUser = async ({ provider, sub, email, displayName }) => 
   const handle = await generateHandleFromEmail(normalizedEmail);
   const fallbackName = displayName?.trim() || handle;
 
-  return prisma.user.create({
+  const created = await prisma.user.create({
     data: {
       email: normalizedEmail,
       handle,
@@ -340,6 +341,7 @@ const findOrCreateSocialUser = async ({ provider, sub, email, displayName }) => 
       [subField]: sub,
     },
   });
+  return { user: created, isNew: true };
 };
 
 const handleSocialAuthError = (error, next, providerLabel) => {
@@ -365,13 +367,13 @@ authRouter.post('/auth/apple', async (req, res, next) => {
     const body = parseBody(socialLoginSchema, req.body);
     const claims = await verifyAppleIdToken(body.idToken);
     if (!claims.sub) throw unauthorized('Apple 로그인 토큰이 유효하지 않습니다.');
-    const user = await findOrCreateSocialUser({
+    const { user, isNew } = await findOrCreateSocialUser({
       provider: 'apple',
       sub: claims.sub,
       email: claims.email,
       displayName: body.name,
     });
-    res.json(buildAuthResponse(user));
+    res.json({ ...buildAuthResponse(user), isNewUser: isNew });
   } catch (error) {
     handleSocialAuthError(error, next, 'Apple');
   }
@@ -382,13 +384,13 @@ authRouter.post('/auth/google', async (req, res, next) => {
     const body = parseBody(socialLoginSchema, req.body);
     const claims = await verifyGoogleIdToken(body.idToken);
     if (!claims.sub) throw unauthorized('Google 로그인 토큰이 유효하지 않습니다.');
-    const user = await findOrCreateSocialUser({
+    const { user, isNew } = await findOrCreateSocialUser({
       provider: 'google',
       sub: claims.sub,
       email: claims.email,
       displayName: body.name || claims.name,
     });
-    res.json(buildAuthResponse(user));
+    res.json({ ...buildAuthResponse(user), isNewUser: isNew });
   } catch (error) {
     handleSocialAuthError(error, next, 'Google');
   }
