@@ -89,8 +89,11 @@ const makeStreakLabels = (period, today = new Date()) => {
 const buildProfileStreak = (posts, today = new Date()) => {
   const activeDays = new Set(posts.map((post) => dayKey(startOfKstTodayAsUtcDate(post.createdAt))));
   const todayKey = dayKey(startOfKstTodayAsUtcDate(today));
+  // 오늘 글을 안 썼더라도 어제까지 연속이면 streak는 유지된다 (오늘 종료 전까지 grace).
+  // 오늘 active면 오늘부터(offset 0), 아니면 어제부터(offset 1) 거꾸로 카운트.
+  const startOffset = activeDays.has(todayKey) ? 0 : 1;
   let current = 0;
-  while (activeDays.has(todayKey - current)) current += 1;
+  while (activeDays.has(todayKey - startOffset - current)) current += 1;
 
   return {
     current,

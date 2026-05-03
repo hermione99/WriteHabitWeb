@@ -45,8 +45,10 @@ const kstDayKey = (date) => Math.floor(startOfKstTodayAsUtcDate(date).getTime() 
 const buildStreak = (posts, today = new Date()) => {
   const activeDays = new Set(posts.map((post) => kstDayKey(post.createdAt)));
   const todayKey = kstDayKey(today);
+  // 오늘 안 썼더라도 어제까지 연속이면 streak 유지 (오늘 종료 전 grace).
+  const startOffset = activeDays.has(todayKey) ? 0 : 1;
   let current = 0;
-  while (activeDays.has(todayKey - current)) current += 1;
+  while (activeDays.has(todayKey - startOffset - current)) current += 1;
 
   const activity = {
     30: Array.from({ length: 30 }, (_, index) => activeDays.has(todayKey - 29 + index)),
