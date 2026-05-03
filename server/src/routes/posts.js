@@ -6,7 +6,7 @@ import { badRequest, unauthorized } from '../lib/httpError.js';
 import { toPublicComment } from '../lib/commentDto.js';
 import { createNotification } from '../lib/notifications.js';
 import { prisma } from '../lib/prisma.js';
-import { toPublicPost } from '../lib/postDto.js';
+import { toPublicPost, postIncludeFor } from '../lib/postDto.js';
 
 const postInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -36,27 +36,7 @@ const parseBody = (schema, body) => {
   return result.data;
 };
 
-const postInclude = {
-  author: true,
-  keyword: true,
-  likes: {
-    select: {
-      userId: true,
-    },
-  },
-  bookmarks: {
-    select: {
-      userId: true,
-    },
-  },
-  _count: {
-    select: {
-      likes: true,
-      comments: true,
-      bookmarks: true,
-    },
-  },
-};
+// viewer 스코프 인클루드는 postIncludeFor(viewerId)로 위임 (lib/postDto.js).
 
 const postCreateInclude = {
   author: true,
@@ -261,7 +241,7 @@ postsRouter.get('/posts', optionalAuth, async (req, res, next) => {
         createdAt: 'desc',
       },
       take: 50,
-      include: postInclude,
+      include: postIncludeFor(req.user?.id),
     });
 
     res.json({
@@ -278,7 +258,7 @@ postsRouter.get('/posts/:id', optionalAuth, async (req, res, next) => {
       where: {
         id: req.params.id,
       },
-      include: postInclude,
+      include: postIncludeFor(req.user?.id),
     });
 
     if (!post) {
@@ -352,7 +332,7 @@ postsRouter.patch('/posts/:id', authenticate, async (req, res, next) => {
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
         ...(body.status !== undefined ? { status: body.status } : {}),
       },
-      include: postInclude,
+      include: postIncludeFor(req.user.id),
     });
 
     res.json({
@@ -405,10 +385,10 @@ const findPublishedPost = async (id) => {
   return post?.status === 'PUBLISHED' ? post : null;
 };
 
-const getPostWithViewerState = (id) =>
+const getPostWithViewerState = (id, viewerId) =>
   prisma.post.findUnique({
     where: { id },
-    include: postInclude,
+    include: postIncludeFor(viewerId),
   });
 
 const commentInclude = {
@@ -468,7 +448,7 @@ postsRouter.post('/posts/:id/like', authenticate, async (req, res, next) => {
       });
     }
 
-    const post = await getPostWithViewerState(existing.id);
+    const post = await getPostWithViewerState(existing.id, req.user.id);
     res.json({
       post: toPublicPost(post, req.user),
     });
@@ -492,7 +472,7 @@ postsRouter.delete('/posts/:id/like', authenticate, async (req, res, next) => {
       },
     });
 
-    const post = await getPostWithViewerState(existing.id);
+    const post = await getPostWithViewerState(existing.id, req.user.id);
     res.json({
       post: toPublicPost(post, req.user),
     });
@@ -523,7 +503,7 @@ postsRouter.post('/posts/:id/bookmark', authenticate, async (req, res, next) => 
       update: {},
     });
 
-    const post = await getPostWithViewerState(existing.id);
+    const post = await getPostWithViewerState(existing.id, req.user.id);
     res.json({
       post: toPublicPost(post, req.user),
     });
@@ -547,7 +527,7 @@ postsRouter.delete('/posts/:id/bookmark', authenticate, async (req, res, next) =
       },
     });
 
-    const post = await getPostWithViewerState(existing.id);
+    const post = await getPostWithViewerState(existing.id, req.user.id);
     res.json({
       post: toPublicPost(post, req.user),
     });

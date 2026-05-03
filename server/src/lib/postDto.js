@@ -1,3 +1,27 @@
+/**
+ * Post Prisma include scoped to a specific viewer. We only need to know
+ * whether *this* viewer liked/bookmarked the post, not the full list of
+ * userIds — so we filter the relation server-side. Drops what was an
+ * O(N likes per post) load down to at most one row per relation.
+ */
+export const postIncludeFor = (viewerId) => ({
+  author: true,
+  keyword: true,
+  likes: viewerId
+    ? { where: { userId: viewerId }, select: { userId: true } }
+    : { where: { userId: '__none__' }, select: { userId: true } },
+  bookmarks: viewerId
+    ? { where: { userId: viewerId }, select: { userId: true } }
+    : { where: { userId: '__none__' }, select: { userId: true } },
+  _count: {
+    select: {
+      likes: true,
+      comments: true,
+      bookmarks: true,
+    },
+  },
+});
+
 const formatRelativeTime = (date) => {
   const diffSec = Math.max(0, Math.floor((Date.now() - new Date(date).getTime()) / 1000));
   if (diffSec < 60) return '방금 전';

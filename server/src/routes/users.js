@@ -5,7 +5,7 @@ import { badRequest, conflict } from '../lib/httpError.js';
 import { isReservedHandle, normalizeHandle } from '../lib/handles.js';
 import { addUtcDays, startOfKstTodayAsUtcDate } from '../lib/kstDate.js';
 import { prisma } from '../lib/prisma.js';
-import { toPublicPost } from '../lib/postDto.js';
+import { toPublicPost, postIncludeFor } from '../lib/postDto.js';
 import { toPublicUser } from '../lib/userDto.js';
 
 const profileSchema = z.object({
@@ -29,27 +29,7 @@ const parseBody = (schema, body) => {
   return result.data;
 };
 
-const postInclude = {
-  author: true,
-  keyword: true,
-  likes: {
-    select: {
-      userId: true,
-    },
-  },
-  bookmarks: {
-    select: {
-      userId: true,
-    },
-  },
-  _count: {
-    select: {
-      likes: true,
-      comments: true,
-      bookmarks: true,
-    },
-  },
-};
+// `postInclude`는 viewer 컨텍스트가 필요해 함수로 위임 (postIncludeFor).
 
 const formatProfileUser = (user) => ({
   id: user.id,
@@ -216,27 +196,29 @@ export const usersRouter = Router();
 
 usersRouter.get('/users/me', authenticate, async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: {
-        id: req.user.id,
-      },
-      include: {
-        posts: {
+    // req.user는 authenticate 미들웨어에서 이미 채워져 있으므로 user 재조회 생략.
+    // posts 조회와 makeProfileDetails(8개 병렬 쿼리)를 같은 Promise.all로 묶어
+    // 직렬 단계 자체를 없앤다.
+    const [posts, details] = await Promise.all([
+      prisma.post.findMany({
+        where: {
+          authorId: req.user.id,
           // 본인 프로필이므로 PUBLISHED + HIDDEN(나만 보기) 모두 포함. DRAFT는 제외.
-          where: {
-            status: { in: ['PUBLISHED', 'HIDDEN'] },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: 24,
-          include: postInclude,
+          status: { in: ['PUBLISHED', 'HIDDEN'] },
         },
-      },
-    });
+        orderBy: { createdAt: 'desc' },
+        take: 24,
+        include: postIncludeFor(req.user.id),
+      }),
+      makeProfileDetails(req.user, req.user, { includePrivate: true, includeStreak: true }),
+    ]);
 
     res.json({
-      profile: await toPublicProfile(user, user, { includePrivate: true, includeStreak: true }),
+      profile: {
+        ...toPublicUser(req.user),
+        ...details,
+        posts: posts.map((post) => toPublicPost(post, req.user)),
+      },
     });
   } catch (error) {
     next(error);
@@ -257,7 +239,7 @@ usersRouter.get('/users/me/likes', authenticate, async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip: offset,
-      include: postInclude,
+      include: postIncludeFor(req.user.id),
     });
 
     res.json({ posts: posts.map((post) => toPublicPost(post, req.user)) });
@@ -280,7 +262,7 @@ usersRouter.get('/users/me/bookmarks', authenticate, async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip: offset,
-      include: postInclude,
+      include: postIncludeFor(req.user.id),
     });
 
     res.json({ posts: posts.map((post) => toPublicPost(post, req.user)) });
@@ -365,7 +347,7 @@ usersRouter.get('/users/:handle', async (req, res, next) => {
             createdAt: 'desc',
           },
           take: 24,
-          include: postInclude,
+          include: postIncludeFor(req.user?.id),
         },
       },
     });
@@ -376,7 +358,7 @@ usersRouter.get('/users/:handle', async (req, res, next) => {
     }
 
     res.json({
-      profile: await toPublicProfile(user, null, { includeStreak: true }),
+      profile: await toPublicProfile(user, req.user || null, { includeStreak: true }),
     });
   } catch (error) {
     next(error);
