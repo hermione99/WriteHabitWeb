@@ -69,6 +69,18 @@ export const login = ({ email, password }) =>
     body: JSON.stringify({ email, password }),
   });
 
+export const loginWithApple = ({ idToken, name }) =>
+  request('/auth/apple', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, name }),
+  });
+
+export const loginWithGoogle = ({ idToken, name }) =>
+  request('/auth/google', {
+    method: 'POST',
+    body: JSON.stringify({ idToken, name }),
+  });
+
 export const requestPasswordReset = ({ email }) =>
   request('/auth/password-reset/request', {
     method: 'POST',

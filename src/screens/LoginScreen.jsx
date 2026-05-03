@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Logo } from '../components/Logo.jsx';
+import { SocialSignInButtons } from '../components/SocialSignInButtons.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { checkHandleAvailability, confirmPasswordReset, login, register, requestPasswordReset } from '../lib/api.js';
 import { CONTACT_EMAIL, CONTACT_MAILTO, PASSWORD_RESET_HELP_MAILTO } from '../lib/contact.js';
@@ -343,6 +344,17 @@ export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, know
                 <span style={{fontFamily:'var(--f-kr)', fontSize:13, color:'#c0392b'}}>{errors.form}</span>
               </div>
             )}
+
+            <SocialSignInButtons
+              onLogin={(auth) => { onLogin(auth, remember); toast(mode==='signup' ? '가입이 완료되었습니다.' : '로그인되었습니다.'); }}
+              remember={remember}
+              onError={(msg) => setErrors({ form: msg })}
+            />
+            <div style={{display:'flex', alignItems:'center', gap:12, margin:'4px 0 20px', color:'var(--ink-mute)', fontSize:11, fontFamily:'var(--f-mono)'}}>
+              <div style={{flex:1, height:1, background:'var(--rule-soft)'}}/>
+              <span>또는 이메일로</span>
+              <div style={{flex:1, height:1, background:'var(--rule-soft)'}}/>
+            </div>
 
             <form onSubmit={handleSubmit} noValidate>
               {mode==='signup' && (
