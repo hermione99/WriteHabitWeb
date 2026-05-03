@@ -96,15 +96,20 @@ const makeStreakLabels = (period, today = new Date()) => {
   });
 };
 
+const STREAK_WINDOW_DAYS = 365;
+
 const makeProfileDetails = async (user, viewer = null, { includePrivate = false, includeStreak = false } = {}) => {
+  // 1년 이내 게시물만 streak 계산에 사용 (UI 윈도우가 최대 365일).
+  const streakSince = new Date(Date.now() - STREAK_WINDOW_DAYS * 86400000);
+
   const [
     publishedPostsCount,
-    postBodies,
+    characterAggregate,
     receivedLikes,
     followers,
     following,
-    likedPosts,
-    bookmarkedPosts,
+    likedCount,
+    bookmarkedCount,
     streakPosts,
   ] = await Promise.all([
     prisma.post.count({
@@ -113,14 +118,13 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false,
         status: 'PUBLISHED',
       },
     }),
-    prisma.post.findMany({
+    // 본문 통째로 가져오던 무거운 쿼리를 캐시 컬럼 합산으로 대체.
+    prisma.post.aggregate({
       where: {
         authorId: user.id,
         status: 'PUBLISHED',
       },
-      select: {
-        body: true,
-      },
+      _sum: { characterCount: true },
     }),
     prisma.like.count({
       where: {
@@ -137,7 +141,7 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false,
       orderBy: {
         createdAt: 'desc',
       },
-      take: 48,
+      take: 12,
       include: {
         follower: true,
       },
@@ -149,50 +153,24 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false,
       orderBy: {
         createdAt: 'desc',
       },
-      take: 48,
+      take: 12,
       include: {
         following: true,
       },
     }),
+    // 본인 프로필일 때만 좋아요/북마크 개수 노출 (사적 정보).
     includePrivate
-      ? prisma.post.findMany({
-          where: {
-            status: 'PUBLISHED',
-            likes: {
-              some: {
-                userId: user.id,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: 24,
-          include: postInclude,
-        })
-      : Promise.resolve([]),
+      ? prisma.like.count({ where: { userId: user.id, post: { status: 'PUBLISHED' } } })
+      : Promise.resolve(0),
     includePrivate
-      ? prisma.post.findMany({
-          where: {
-            status: 'PUBLISHED',
-            bookmarks: {
-              some: {
-                userId: user.id,
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-          take: 24,
-          include: postInclude,
-        })
-      : Promise.resolve([]),
+      ? prisma.bookmark.count({ where: { userId: user.id, post: { status: 'PUBLISHED' } } })
+      : Promise.resolve(0),
     includeStreak
       ? prisma.post.findMany({
           where: {
             authorId: user.id,
             status: 'PUBLISHED',
+            createdAt: { gte: streakSince },
           },
           select: {
             createdAt: true,
@@ -201,7 +179,7 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false,
       : Promise.resolve([]),
   ]);
 
-  const characterCount = postBodies.reduce((sum, post) => sum + (post.body || '').length, 0);
+  const characterCount = characterAggregate?._sum?.characterCount ?? 0;
   const streakStats = includeStreak
     ? {
         streak: buildStreak(streakPosts),
@@ -220,12 +198,11 @@ const makeProfileDetails = async (user, viewer = null, { includePrivate = false,
       receivedLikes,
       followers: followers.length,
       following: following.length,
+      ...(includePrivate ? { likedCount, bookmarkedCount } : {}),
       ...streakStats,
     },
     followers: followers.map((item) => formatProfileUser(item.follower)),
     following: following.map((item) => formatProfileUser(item.following)),
-    likedPosts: likedPosts.map((post) => toPublicPost(post, viewer)),
-    bookmarkedPosts: bookmarkedPosts.map((post) => toPublicPost(post, viewer)),
   };
 };
 
@@ -261,6 +238,52 @@ usersRouter.get('/users/me', authenticate, async (req, res, next) => {
     res.json({
       profile: await toPublicProfile(user, user, { includePrivate: true, includeStreak: true }),
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 내가 좋아요한 글 목록 — 페이지네이션. 프로필 첫 로드와 분리해 lazy fetch.
+usersRouter.get('/users/me/likes', authenticate, async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    const posts = await prisma.post.findMany({
+      where: {
+        status: 'PUBLISHED',
+        likes: { some: { userId: req.user.id } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+      include: postInclude,
+    });
+
+    res.json({ posts: posts.map((post) => toPublicPost(post, req.user)) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// 내가 저장(북마크)한 글 목록.
+usersRouter.get('/users/me/bookmarks', authenticate, async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 100);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    const posts = await prisma.post.findMany({
+      where: {
+        status: 'PUBLISHED',
+        bookmarks: { some: { userId: req.user.id } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip: offset,
+      include: postInclude,
+    });
+
+    res.json({ posts: posts.map((post) => toPublicPost(post, req.user)) });
   } catch (error) {
     next(error);
   }

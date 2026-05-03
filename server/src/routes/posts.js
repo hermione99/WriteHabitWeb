@@ -97,11 +97,13 @@ postsRouter.get('/posts/drafts', authenticate, async (req, res, next) => {
 postsRouter.post('/posts/drafts', authenticate, async (req, res, next) => {
   try {
     const body = parseBody(draftInputSchema, req.body);
+    const draftBody = body.body || '';
     const draft = await prisma.post.create({
       data: {
         title: body.title || '제목 없는 초안',
-        body: body.body || '',
+        body: draftBody,
         bodyHtml: body.bodyHtml || null,
+        characterCount: draftBody.length,
         authorId: req.user.id,
         keywordId: body.keywordId || null,
         status: 'DRAFT',
@@ -141,7 +143,7 @@ postsRouter.patch('/posts/drafts/:id', authenticate, async (req, res, next) => {
       },
       data: {
         ...(body.title !== undefined ? { title: body.title || '제목 없는 초안' } : {}),
-        ...(body.body !== undefined ? { body: body.body } : {}),
+        ...(body.body !== undefined ? { body: body.body, characterCount: body.body.length } : {}),
         ...(body.bodyHtml !== undefined ? { bodyHtml: body.bodyHtml || null } : {}),
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
       },
@@ -189,6 +191,7 @@ postsRouter.post('/posts/drafts/:id/publish', authenticate, async (req, res, nex
         title,
         body: content,
         bodyHtml: contentHtml,
+        characterCount: content.length,
         keywordId: body.keywordId !== undefined ? body.keywordId || null : existing.keywordId,
         status: 'PUBLISHED',
       },
@@ -304,6 +307,7 @@ postsRouter.post('/posts', authenticate, async (req, res, next) => {
         title: body.title,
         body: body.body,
         bodyHtml: body.bodyHtml || null,
+        characterCount: body.body.length,
         authorId: req.user.id,
         keywordId: body.keywordId || null,
         status: body.status || 'PUBLISHED',
@@ -343,7 +347,7 @@ postsRouter.patch('/posts/:id', authenticate, async (req, res, next) => {
       },
       data: {
         ...(body.title !== undefined ? { title: body.title } : {}),
-        ...(body.body !== undefined ? { body: body.body } : {}),
+        ...(body.body !== undefined ? { body: body.body, characterCount: body.body.length } : {}),
         ...(body.bodyHtml !== undefined ? { bodyHtml: body.bodyHtml || null } : {}),
         ...(body.keywordId !== undefined ? { keywordId: body.keywordId || null } : {}),
         ...(body.status !== undefined ? { status: body.status } : {}),

@@ -91,6 +91,9 @@ model Post {
   title       String
   body        String
   bodyHtml    String?
+  /// Cached character count of `body` (JS string length). Maintained on
+  /// create/update so profile stats can sum totals without scanning bodies.
+  characterCount Int      @default(0)
   status      PostStatus  @default(PUBLISHED)
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
