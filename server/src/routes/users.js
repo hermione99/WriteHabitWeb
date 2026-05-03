@@ -225,47 +225,78 @@ usersRouter.get('/users/me', authenticate, async (req, res, next) => {
   }
 });
 
-// 내가 좋아요한 글 목록 — 페이지네이션. 프로필 첫 로드와 분리해 lazy fetch.
+// 페이지네이션 헬퍼 — cursor + limit 파싱과 hasMore 판정.
+const parsePaging = (req) => ({
+  limit: Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50),
+  cursor: typeof req.query.cursor === 'string' && req.query.cursor ? req.query.cursor : null,
+});
+
+const pageSlice = (rows, limit) => {
+  const hasMore = rows.length > limit;
+  const items = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = hasMore ? items[items.length - 1].id : null;
+  return { items, nextCursor };
+};
+
+// 내가 좋아요한 글 — cursor 기반 페이지네이션.
 usersRouter.get('/users/me/likes', authenticate, async (req, res, next) => {
   try {
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 100);
-    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-
-    const posts = await prisma.post.findMany({
+    const { limit, cursor } = parsePaging(req);
+    const rows = await prisma.post.findMany({
       where: {
         status: 'PUBLISHED',
         likes: { some: { userId: req.user.id } },
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: postIncludeFor(req.user.id),
     });
-
-    res.json({ posts: posts.map((post) => toPublicPost(post, req.user)) });
+    const { items, nextCursor } = pageSlice(rows, limit);
+    res.json({ posts: items.map((post) => toPublicPost(post, req.user)), nextCursor });
   } catch (error) {
     next(error);
   }
 });
 
-// 내가 저장(북마크)한 글 목록.
+// 내가 저장(북마크)한 글.
 usersRouter.get('/users/me/bookmarks', authenticate, async (req, res, next) => {
   try {
-    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 24, 1), 100);
-    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
-
-    const posts = await prisma.post.findMany({
+    const { limit, cursor } = parsePaging(req);
+    const rows = await prisma.post.findMany({
       where: {
         status: 'PUBLISHED',
         bookmarks: { some: { userId: req.user.id } },
       },
-      orderBy: { createdAt: 'desc' },
-      take: limit,
-      skip: offset,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: postIncludeFor(req.user.id),
     });
+    const { items, nextCursor } = pageSlice(rows, limit);
+    res.json({ posts: items.map((post) => toPublicPost(post, req.user)), nextCursor });
+  } catch (error) {
+    next(error);
+  }
+});
 
-    res.json({ posts: posts.map((post) => toPublicPost(post, req.user)) });
+// 내가 쓴 글 — 첫 페이지는 /users/me에 동봉되고, 더 가져올 때 이 엔드포인트 사용.
+// 본인 프로필이므로 PUBLISHED + HIDDEN 모두 포함.
+usersRouter.get('/users/me/posts', authenticate, async (req, res, next) => {
+  try {
+    const { limit, cursor } = parsePaging(req);
+    const rows = await prisma.post.findMany({
+      where: {
+        authorId: req.user.id,
+        status: { in: ['PUBLISHED', 'HIDDEN'] },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      include: postIncludeFor(req.user.id),
+    });
+    const { items, nextCursor } = pageSlice(rows, limit);
+    res.json({ posts: items.map((post) => toPublicPost(post, req.user)), nextCursor });
   } catch (error) {
     next(error);
   }

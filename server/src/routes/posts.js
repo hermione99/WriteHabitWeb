@@ -55,19 +55,28 @@ export const postsRouter = Router();
 
 postsRouter.get('/posts/drafts', authenticate, async (req, res, next) => {
   try {
-    const drafts = await prisma.post.findMany({
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
+    const cursor = typeof req.query.cursor === 'string' && req.query.cursor ? req.query.cursor : null;
+
+    // 한 페이지 더 가져와 다음 cursor가 있는지 판정.
+    const rows = await prisma.post.findMany({
       where: {
         authorId: req.user.id,
         status: 'DRAFT',
       },
-      orderBy: {
-        updatedAt: 'desc',
-      },
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: postCreateInclude,
     });
 
+    const hasMore = rows.length > limit;
+    const drafts = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? drafts[drafts.length - 1].id : null;
+
     res.json({
       drafts: drafts.map((post) => toPublicPost(post, req.user)),
+      nextCursor,
     });
   } catch (error) {
     next(error);
