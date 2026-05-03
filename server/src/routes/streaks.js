@@ -107,15 +107,30 @@ export const streaksRouter = Router();
 
 streaksRouter.get('/streaks/me/summary', authenticate, async (req, res, next) => {
   try {
-    const posts = await prisma.post.findMany({
-      where: {
-        authorId: req.user.id,
-        status: 'PUBLISHED',
-      },
-      select: {
-        createdAt: true,
-      },
-    });
+    // streak UI 윈도우는 최대 365일이므로 그 범위만 가져온다.
+    // 기존엔 사용자의 모든 published 글의 createdAt을 풀스캔했음.
+    const streakSince = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+
+    // posts count를 같은 round-trip으로 노출 — Home 탭이 이걸 위해
+    // 무거운 /users/me를 또 부르지 않도록.
+    const [posts, postsCount] = await Promise.all([
+      prisma.post.findMany({
+        where: {
+          authorId: req.user.id,
+          status: 'PUBLISHED',
+          createdAt: { gte: streakSince },
+        },
+        select: {
+          createdAt: true,
+        },
+      }),
+      prisma.post.count({
+        where: {
+          authorId: req.user.id,
+          status: 'PUBLISHED',
+        },
+      }),
+    ]);
 
     res.json({
       streak: buildProfileStreak(posts),
@@ -124,6 +139,7 @@ streaksRouter.get('/streaks/me/summary', authenticate, async (req, res, next) =>
         90: makeStreakLabels(90),
         365: makeStreakLabels(365),
       },
+      postsCount,
     });
   } catch (error) {
     next(error);
