@@ -173,17 +173,8 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
     if (nn.length < 2)    { toast('닉네임은 2자 이상이어야 합니다.', 'error'); return; }
     if (nn.length > 20)   { toast('닉네임은 20자 이하여야 합니다.', 'error'); return; }
     if (editBio.length > 80) { toast('소개는 80자 이하여야 합니다.', 'error'); return; }
-    if (!editHandlePreview) { toast('핸들을 입력해주세요.', 'error'); return; }
-    if (editHandlePreview.length < 3) { toast('핸들은 3자 이상이어야 합니다.', 'error'); return; }
-    if (editHandlePreview.length > 20) { toast('핸들은 20자 이하여야 합니다.', 'error'); return; }
-    if (!/^[a-z][a-z0-9_]*$/.test(editHandlePreview)) { toast('핸들은 영문 소문자로 시작해야 합니다.', 'error'); return; }
-    if (editHandleStatus === 'taken')    { toast('이미 사용 중인 핸들입니다.', 'error'); return; }
-    if (editHandleStatus === 'reserved') { toast('예약된 핸들입니다.', 'error'); return; }
-    if (editHandleStatus === 'invalid')  { toast('사용할 수 없는 핸들입니다.', 'error'); return; }
-    if (editHandleStatus === 'checking') { toast('핸들 확인이 끝나고 다시 시도해주세요.', 'error'); return; }
-    const newHandle = editHandlePreview;
     try {
-      await onUpdateUser({ nickname: nn, handle: newHandle, bio: editBio.trim(), avatarUrl: editAvatarUrl || null });
+      await onUpdateUser({ nickname: nn, bio: editBio.trim(), avatarUrl: editAvatarUrl || null });
       setEditing(false);
       toast('프로필이 수정되었습니다 ✓');
     } catch {}
@@ -469,22 +460,17 @@ export const ProfileScreen = ({onNav, posts, user, viewUser, onLogout, onUpdateU
 
               <div style={{marginBottom:18}}>
                 <div className="label" style={{fontSize:10, marginBottom:6}}>02 · 핸들</div>
-                <input className="field" value={editHandle} onChange={e => setEditHandle(e.target.value)} maxLength={20} />
-                <div style={{display:'flex', justifyContent:'space-between', marginTop:4, gap:8, fontFamily:'var(--f-mono)', fontSize:10}}>
-                  <span style={{
-                    color: ['taken', 'reserved', 'invalid'].includes(editHandleStatus) ? '#c0392b'
-                         : editHandleStatus === 'ok' && editHandlePreview ? 'var(--accent)'
-                         : 'var(--ink-mute)',
-                  }}>
-                    {editHandleStatus === 'checking' ? '핸들 확인 중…'
-                     : editHandleStatus === 'taken'  ? '이미 사용 중인 핸들입니다.'
-                     : editHandleStatus === 'reserved' ? '예약된 핸들입니다.'
-                     : editHandleStatus === 'invalid' ? '사용할 수 없는 핸들입니다.'
-                     : editHandlePreview && editHandlePreview === user?.handle ? `현재 핸들 · @${editHandlePreview}`
-                     : editHandleStatus === 'ok' && editHandlePreview ? `사용 가능 · @${editHandlePreview}`
-                     : '영문 소문자로 시작, 영문/숫자/_ 사용'}
-                  </span>
-                  <span className="meta" style={{fontSize:10}}>{editHandlePreview.length} / 20</span>
+                <div style={{
+                  display:'flex', alignItems:'center', justifyContent:'space-between',
+                  padding:'10px 12px', background:'var(--paper-2)',
+                  border:'1px solid var(--rule-soft)', borderRadius:4,
+                  color:'var(--ink-mute)', fontFamily:'var(--f-kr)', fontSize:14,
+                }}>
+                  <span>@{user?.handle}</span>
+                  <span style={{fontSize:10, fontFamily:'var(--f-mono)'}}>🔒</span>
+                </div>
+                <div className="meta" style={{fontSize:10, marginTop:4, fontFamily:'var(--f-mono)'}}>
+                  핸들은 가입 시 한 번만 정할 수 있어요.
                 </div>
               </div>
 
