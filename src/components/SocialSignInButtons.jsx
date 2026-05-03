@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { loginWithApple, loginWithGoogle } from '../lib/api.js';
 
 const APPLE_SERVICES_ID = 'co.writehabit.web';
-const GOOGLE_WEB_CLIENT_ID = '247995963053-kqt0ph21rh0okm020j5d0i0uu0jedilh.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = '666930356191-6er0i65ciom9jdu1vjtobu9op5qdeb1e.apps.googleusercontent.com';
 
 const APPLE_SDK = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
 const GOOGLE_SDK = 'https://accounts.google.com/gsi/client';
