@@ -4,6 +4,7 @@ services:
     runtime: node
     rootDir: server
     plan: starter
+    region: singapore
     buildCommand: npm install && npm run prisma:generate && npm run prisma:deploy
     startCommand: npm start
     healthCheckPath: /api/ready
