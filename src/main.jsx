@@ -52,7 +52,14 @@ const MobileBottomNav = ({ active, onNav }) => {
 const App = () => {
   const toast = useToast();
 
-  const [screen, setScreen]   = useState(() => readString('wh_auth_token') || readString('wh_logged_in') ? 'feed' : 'login');
+  const [screen, setScreen]   = useState(() => {
+    // 외부 링크(예: iOS 앱 설정 → 개인정보처리방침)에서 직접 진입한 경우 URL
+    // 경로를 보고 해당 화면으로 시작. 인증 없이도 접근 가능해야 함.
+    const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+    if (path === '/privacy' || path === '/privacy/') return 'privacy';
+    if (path === '/terms' || path === '/terms/') return 'terms';
+    return readString('wh_auth_token') || readString('wh_logged_in') ? 'feed' : 'login';
+  });
   const [dark, setDark]       = useState(() => readString('wh_dark') === '1');
   const [posts, setPosts]     = useState([]);
   const [activePost, setPost]         = useState(null);
@@ -711,6 +718,14 @@ const App = () => {
     toast('로그아웃되었습니다.');
   };
 
+  // 인증 없이도 접근 가능해야 하는 정적 페이지(외부 링크/공유)는 메인 앱
+  // 트리에 들어가기 전에 standalone으로 처리. 데이터 fetch 의존성 없이 안전.
+  if (screen === 'terms') {
+    return <LegalScreen type="terms" onNav={onNav} dark={dark} onToggleDark={onToggleDark} />;
+  }
+  if (screen === 'privacy') {
+    return <LegalScreen type="privacy" onNav={onNav} dark={dark} onToggleDark={onToggleDark} />;
+  }
   if (screen === 'login') {
     return <LoginScreen onLogin={onLogin} onBrowse={() => onNav('feed')} onLegalNav={onNav} todayKw={todayKw} stats={stats} knownHandles={[]} />;
   }
