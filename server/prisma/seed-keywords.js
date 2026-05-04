@@ -6,7 +6,11 @@ const prisma = new PrismaClient();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LAUNCH_DATE = new Date(Date.UTC(2026, 3, 1));
-const DAYS_TO_SEED = 120;
+/// 최소 시드 일수 (LAUNCH_DATE부터). 아래 main()에서 "오늘로부터 1년 뒤까지"
+/// 보장되도록 동적으로 늘어남.
+const MIN_DAYS_TO_SEED = 120;
+/// 항상 오늘로부터 이 일수만큼은 미래 스케줄이 존재하도록 보장.
+const FUTURE_BUFFER_DAYS = 365;
 
 const mulberry32 = (seed) => {
   return function random() {
@@ -83,9 +87,17 @@ const upsertKeywordSchedule = async ({ startsAt, word, eng, status }) => {
 
 const main = async () => {
   const today = startOfKstTodayAsUtcDate();
+  // LAUNCH_DATE 이후 며칠 지났는지. 최소 0.
+  const daysFromLaunch = Math.max(
+    0,
+    Math.round((today.getTime() - LAUNCH_DATE.getTime()) / DAY_MS)
+  );
+  // 시드 윈도우: LAUNCH_DATE부터 시작해서, 오늘+1년이 항상 포함되도록 길이를 동적으로 늘림.
+  // upsert 라서 이미 있는 날짜는 그대로, 새 미래 날짜만 추가됨 → cron으로 매달 돌려도 안전.
+  const daysToSeed = Math.max(MIN_DAYS_TO_SEED, daysFromLaunch + FUTURE_BUFFER_DAYS);
   let createdOrUpdated = 0;
 
-  for (let offset = 0; offset < DAYS_TO_SEED; offset += 1) {
+  for (let offset = 0; offset < daysToSeed; offset += 1) {
     const startsAt = addUtcDays(LAUNCH_DATE, offset);
     const shuffled = shuffleSeeded(KEYWORD_POOL, startsAt.getUTCFullYear() * 31 + 7);
     const keyword = shuffled[dayOfYear(startsAt) % shuffled.length];
@@ -99,7 +111,11 @@ const main = async () => {
     createdOrUpdated += 1;
   }
 
-  console.log(`Seeded ${createdOrUpdated} keyword schedules.`);
+  console.log(
+    `Seeded ${createdOrUpdated} keyword schedules ` +
+      `(window: ${LAUNCH_DATE.toISOString().slice(0, 10)} → ` +
+      `${addUtcDays(LAUNCH_DATE, daysToSeed - 1).toISOString().slice(0, 10)}).`
+  );
 };
 
 main()
