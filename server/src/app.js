@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cors from 'cors';
 import express from 'express';
 import helmet from 'helmet';
@@ -20,6 +21,10 @@ export const createApp = () => {
   const app = express();
 
   app.use(helmet());
+  // gzip 압축 — JSON 응답이 큰 엔드포인트(/posts, /users/me 등)에서
+  // 전송 크기 70~80% 감소. cors/morgan 등 상위 미들웨어보다 먼저 등록해야
+  // 후속 응답에 모두 적용됨.
+  app.use(compression());
   app.use(
     cors({
       origin(origin, callback) {
