@@ -231,6 +231,27 @@ export const LoginScreen = ({onLogin, onBrowse, onLegalNav, todayKw, stats, know
       {/* RIGHT — form */}
       <main className="login-right">
         <div style={{maxWidth:380}}>
+          <a
+            href="https://testflight.apple.com/join/WJ4DTGN9"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:'block',
+              padding:'10px 14px',
+              marginBottom:20,
+              border:'1px solid var(--rule-soft)',
+              borderRadius:8,
+              background:'var(--paper-2, transparent)',
+              fontFamily:'var(--f-kr)',
+              fontSize:12.5,
+              lineHeight:1.5,
+              color:'var(--ink-soft)',
+              textDecoration:'none',
+            }}
+          >
+            <span style={{fontWeight:600, color:'var(--ink)'}}>📱 iOS 앱 베타 진행 중</span>
+            <span style={{color:'var(--ink-mute)', marginLeft:6}}>· TestFlight로 참여하기 →</span>
+          </a>
           <section className="login-mobile-keyword">
             <div className="eyebrow">오늘의 키워드 · {todayKw.dateStr} · NO. {todayKw.no}</div>
             <div className="login-mobile-keyword-word">

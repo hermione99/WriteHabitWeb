@@ -801,6 +801,7 @@ const App = () => {
           <span className="meta" style={{fontSize:10}}>© 2026 WriteHabit</span>
         </div>
         <div style={{display:'flex', gap:20, fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)'}}>
+          <a href="https://testflight.apple.com/join/WJ4DTGN9" target="_blank" rel="noopener noreferrer" style={{fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', textDecoration:'none'}}>iOS 베타</a>
           <button onClick={() => onNav('terms')} style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', padding:0}}>이용약관</button>
           <button onClick={() => onNav('privacy')} style={{background:'none', border:'none', cursor:'pointer', fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', padding:0}}>개인정보처리방침</button>
           <a href={CONTACT_MAILTO} style={{fontFamily:'var(--f-mono)', fontSize:10.5, color:'var(--ink-mute)', textDecoration:'none'}}>문의/피드백</a>
