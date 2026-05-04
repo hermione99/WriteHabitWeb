@@ -229,6 +229,8 @@ postsRouter.get('/posts', optionalAuth, async (req, res, next) => {
     const keywordId = typeof req.query.keywordId === 'string' ? req.query.keywordId : null;
     const keyword = typeof req.query.keyword === 'string' ? req.query.keyword.trim() : null;
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 20, 1), 50);
+    const cursor = typeof req.query.cursor === 'string' && req.query.cursor ? req.query.cursor : null;
     const searchFilter = q
       ? {
           OR: [
@@ -239,22 +241,26 @@ postsRouter.get('/posts', optionalAuth, async (req, res, next) => {
           ],
         }
       : {};
-    const posts = await prisma.post.findMany({
+    const rows = await prisma.post.findMany({
       where: {
         status: 'PUBLISHED',
         ...(keywordId ? { keywordId } : {}),
         ...(!keywordId && keyword ? { keyword: { text: keyword } } : {}),
         ...searchFilter,
       },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 50,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
       include: postIncludeFor(req.user?.id),
     });
 
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? items[items.length - 1].id : null;
+
     res.json({
-      posts: posts.map((post) => toPublicPost(post, req.user)),
+      posts: items.map((post) => toPublicPost(post, req.user)),
+      nextCursor,
     });
   } catch (error) {
     next(error);
