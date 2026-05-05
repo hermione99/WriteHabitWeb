@@ -6,6 +6,10 @@ const DRAFT_KEY = 'wh_draft';
 
 export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, user, editingPost, editingDraft, drafts = [], localDraft, onLoadDraft, onDeleteDraft, onUpdatePost, onClearEditing, onClearDraftEditing, todayKw}) => {
   const isEditing = !!editingPost;
+  // 편집 모드일 때는 글의 원본 키워드를 그대로 보여준다. 신규 작성/임시저장 편집
+  // 일 때만 오늘의 키워드. 저장 시 onUpdatePost가 keywordId를 보내지 않아
+  // 서버에선 원본 keywordId가 유지된다.
+  const displayKeyword = editingPost?.keyword || todayKw;
   const isDraftEditing = !!editingDraft;
   const activeKeywordId = editingDraft?.keywordId || editingDraft?.keyword?.id || todayKw?.id || null;
   const toast = useToast();
@@ -492,15 +496,19 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
         {/* Keyword strip */}
         <div className="write-keyword-strip" style={{display:'flex', justifyContent:'space-between', alignItems:'baseline', paddingBottom:20, borderBottom:'1px solid var(--rule-soft)', marginBottom:28}}>
           <div>
-            <div className="eyebrow" style={{marginBottom:8}}>오늘의 키워드 · No. {todayKw.no}</div>
+            <div className="eyebrow" style={{marginBottom:8}}>
+              {isEditing ? '이 글의 키워드' : `오늘의 키워드 · No. ${todayKw.no}`}
+            </div>
             <div style={{fontFamily:'var(--f-kw)', fontSize:36, fontWeight:400, letterSpacing:'-0.02em', color:'var(--ink)'}}>
-              {todayKw.word} <span style={{color:'var(--ink-faint)', fontFamily:'var(--f-serif)', fontSize:22, marginLeft:8}}>{todayKw.eng.charAt(0) + todayKw.eng.slice(1).toLowerCase()}</span>
+              {displayKeyword.word} <span style={{color:'var(--ink-faint)', fontFamily:'var(--f-serif)', fontSize:22, marginLeft:8}}>{(displayKeyword.eng || '').charAt(0) + (displayKeyword.eng || '').slice(1).toLowerCase()}</span>
             </div>
           </div>
-          <div style={{textAlign:'right'}}>
-            <div className="meta" style={{fontSize:10.5}}>마감 · 23:59</div>
-            <div className="meta" style={{fontSize:10.5}}>{timeLeft} 남음</div>
-          </div>
+          {!isEditing && (
+            <div style={{textAlign:'right'}}>
+              <div className="meta" style={{fontSize:10.5}}>마감 · 23:59</div>
+              <div className="meta" style={{fontSize:10.5}}>{timeLeft} 남음</div>
+            </div>
+          )}
         </div>
 
         {/* Title */}
@@ -603,7 +611,7 @@ export const WriteScreen = ({onNav, onPublish, onSaveDraft, dark, onToggleDark, 
             className="editor-body"
             contentEditable
             suppressContentEditableWarning
-            data-placeholder={`오늘의 키워드 '${todayKw.word}'에 대해 자유롭게 써보세요…`}
+            data-placeholder={`${isEditing ? '키워드' : '오늘의 키워드'} '${displayKeyword.word}'에 대해 자유롭게 써보세요…`}
             onInput={() => { handleInput(); refreshTools(); }}
             onPaste={handlePaste}
             onKeyUp={refreshTools}
