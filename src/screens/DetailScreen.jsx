@@ -71,9 +71,25 @@ const sanitizeArticleHtml = (html = '') => {
     // <br> 만 있어도 빈 단락으로 취급
     return [...el.children].every((c) => c.tagName === 'BR');
   };
-  [...root.querySelectorAll('p, div')]
-    .filter(isEmptyParagraph)
-    .forEach((el) => el.remove());
+  // 정책: 연속된 빈 단락 N개 → 1개로 압축. iOS 렌더링과 일치 (한 줄 띄움 유지).
+  // 이전 동작은 빈 단락을 모두 삭제해서 사용자가 의도한 단락 사이 빈 줄이 사라졌음.
+  const blocks = [...root.querySelectorAll('p, div')];
+  let runStart = -1;
+  for (let i = 0; i <= blocks.length; i += 1) {
+    const empty = i < blocks.length && isEmptyParagraph(blocks[i]);
+    if (empty && runStart === -1) {
+      runStart = i;
+    } else if (!empty && runStart !== -1) {
+      for (let j = runStart + 1; j < i; j += 1) blocks[j].remove();
+      runStart = -1;
+    }
+  }
+  while (root.lastElementChild && isEmptyParagraph(root.lastElementChild)) {
+    root.lastElementChild.remove();
+  }
+  while (root.firstElementChild && isEmptyParagraph(root.firstElementChild)) {
+    root.firstElementChild.remove();
+  }
 
   return root.innerHTML;
 };
