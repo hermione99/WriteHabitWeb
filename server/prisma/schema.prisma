@@ -43,6 +43,9 @@ model User {
   googleSub      String?        @unique
   role           UserRole       @default(USER)
   avatarUrl      String?
+  /// 매일 키워드 알림을 받을 KST 시각(0-23). null이면 알림 비활성화.
+  /// 기본값 9 (09:00 KST) — 기존 cron의 동작과 일치.
+  notificationHour Int?         @default(9)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   posts          Post[]

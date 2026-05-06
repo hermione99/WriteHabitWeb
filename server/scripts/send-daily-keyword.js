@@ -1,25 +1,27 @@
 #!/usr/bin/env node
 /**
- * 매일 키워드 알림을 발송하는 cron 스크립트.
+ * 매시 키워드 알림을 발송하는 cron 스크립트.
  *
  * 실행:
  *   node scripts/send-daily-keyword.js
  *
- * Render Cron Job으로 매일 KST 09:00 (UTC 00:00) 트리거.
+ * Render Cron Job으로 **매시 정각 (`0 * * * *`)** 트리거.
  * 동작:
- *   1. 오늘의 키워드 조회
- *   2. device가 등록된 사용자 중 — **오늘 아직 글을 안 쓴 사람**만 추림
- *   3. 각 사용자의 현재 streak를 계산해 "위험" 여부 판단
- *   4. 메시지 분기:
- *      - streak 위험: "🔥 N일째 기록이 위험해요! 오늘의 키워드: 'X'"
- *      - 일반:        "오늘의 키워드 'X' — 어떤 이야기가 떠오르나요?"
- *   5. APNs rate limit 보호로 50명씩 chunk + 1초 대기
+ *   1. 현재 KST 시각(0-23) 계산
+ *   2. notificationHour가 그 시각과 일치하는 사용자만 대상
+ *   3. 그 중 오늘 아직 글을 안 쓴 사람만 추림
+ *   4. streak "위험" 메시지 분기 + chunked 발송
+ *
+ * 사용자가 notificationHour를 null로 설정하면 알림 비활성화 (대상 제외).
  */
 import 'dotenv/config';
 import { prisma } from '../src/lib/prisma.js';
 import { toTodayKeyword } from '../src/lib/keywordDto.js';
 import { sendPushToUser } from '../src/lib/push.js';
 import { addUtcDays, startOfKstTodayAsUtcDate } from '../src/lib/kstDate.js';
+
+const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const currentKstHour = () => new Date(Date.now() + KST_OFFSET_MS).getUTCHours();
 
 const CHUNK_SIZE = 50;
 const CHUNK_DELAY_MS = 1000;
@@ -34,6 +36,9 @@ const main = async () => {
   const tomorrowUtc = addUtcDays(todayUtc, 1);
   const lookbackUtc = addUtcDays(todayUtc, -STREAK_LOOKBACK_DAYS);
   const todayKey = dayKey(todayUtc);
+  const hour = currentKstHour();
+
+  console.log(`[daily-keyword] Current KST hour: ${hour}`);
 
   // 1) 오늘의 키워드
   const schedule = await prisma.keywordSchedule.findFirst({
@@ -52,14 +57,17 @@ const main = async () => {
   const keyword = toTodayKeyword(schedule);
   console.log(`[daily-keyword] Today's keyword: "${keyword.word}"`);
 
-  // 2) device 등록된 사용자 후보
-  const usersWithDevices = await prisma.device.findMany({
-    distinct: ['userId'],
-    select: { userId: true },
+  // 2) 이 시각에 알림 받기로 한 사용자 (device도 등록돼 있어야 발송 가능)
+  const eligibleUsers = await prisma.user.findMany({
+    where: {
+      notificationHour: hour,
+      devices: { some: {} },
+    },
+    select: { id: true },
   });
-  const candidateIds = usersWithDevices.map((d) => d.userId);
+  const candidateIds = eligibleUsers.map((u) => u.id);
   if (candidateIds.length === 0) {
-    console.log('[daily-keyword] No users with devices.');
+    console.log(`[daily-keyword] No users opted into ${hour}:00 with devices.`);
     return;
   }
 

@@ -19,6 +19,8 @@ const profileSchema = z.object({
     .optional(),
   bio: z.string().trim().max(120).optional().nullable(),
   avatarUrl: z.string().trim().url().max(1000).optional().nullable(),
+  /// 매일 키워드 알림 받을 KST 시각(0-23). null이면 비활성화.
+  notificationHour: z.number().int().min(0).max(23).optional().nullable(),
 });
 
 const parseBody = (schema, body) => {
@@ -337,6 +339,7 @@ usersRouter.patch('/users/me', authenticate, async (req, res, next) => {
         ...(nextHandle !== undefined ? { handle: nextHandle } : {}),
         ...(body.bio !== undefined ? { bio: body.bio || null } : {}),
         ...(body.avatarUrl !== undefined ? { avatarUrl: body.avatarUrl || null } : {}),
+        ...(body.notificationHour !== undefined ? { notificationHour: body.notificationHour } : {}),
       },
     });
 

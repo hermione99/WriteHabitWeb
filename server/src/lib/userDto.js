@@ -6,6 +6,7 @@ export const toPublicUser = (user) => ({
   bio: user.bio,
   role: user.role,
   avatarUrl: user.avatarUrl,
+  notificationHour: user.notificationHour,
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
