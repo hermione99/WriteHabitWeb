@@ -90,11 +90,15 @@ export const sendPushToUser = async (userId, payload) => {
       const invalidTokens = [];
       for (const f of result.failed) {
         const reason = f.response?.reason || f.error?.message || '';
-        // BadDeviceToken / Unregistered → 토큰이 더 이상 유효하지 않음
+        // 영구히 invalid한 토큰 → DB에서 제거.
+        // BadEnvironmentKeyInToken: 토큰이 sandbox/production 다른 환경에 등록됨
+        //   (예: Xcode dev 빌드 토큰을 production APN으로 보낼 때). 환경 안 맞으면
+        //   영원히 실패하므로 제거하고 앱이 새로 등록하도록 둔다.
         if (
           reason === 'BadDeviceToken' ||
           reason === 'Unregistered' ||
-          reason === 'DeviceTokenNotForTopic'
+          reason === 'DeviceTokenNotForTopic' ||
+          reason === 'BadEnvironmentKeyInToken'
         ) {
           invalidTokens.push(f.device);
         } else {
