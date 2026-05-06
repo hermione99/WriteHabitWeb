@@ -8,6 +8,7 @@ import { devicesRouter } from './routes/devices.js';
 import { env } from './config/env.js';
 import { authRouter } from './routes/auth.js';
 import { healthRouter } from './routes/health.js';
+import { internalRouter } from './routes/internal.js';
 import { keywordsRouter } from './routes/keywords.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { postsRouter } from './routes/posts.js';
@@ -57,6 +58,7 @@ export const createApp = () => {
   app.use('/api', uploadsRouter);
   app.use('/api', devicesRouter);
   app.use('/api', adminRouter);
+  app.use('/api', internalRouter);
 
   app.use((req, res) => {
     res.status(404).json({
